@@ -1,0 +1,22 @@
+# --- Core API framework ---
+fastapi==0.115.0
+uvicorn==0.30.6
+
+# --- Machine Learning ---
+scikit-learn==1.5.2
+numpy==1.26.4
+pandas==2.2.3
+joblib==1.4.2
+
+# --- Google Gemini SDK for image-to-text ---
+google-generativeai==0.8.3
+
+# --- Utilities ---
+python-dotenv==1.0.1
+pillow==10.4.0
+
+# --- Data validation & typing ---
+pydantic==2.9.0
+
+# --- CORS Middleware (comes with FastAPI but safe to keep) ---
+starlette==0.37.2
