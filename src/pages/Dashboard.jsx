@@ -1,0 +1,331 @@
+// src/pages/Dashboard.jsx (Updated with Upload Button)
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Scan, Search, User, Home, Grid3x3, Sparkles, Upload } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import NovaBadge from '../components/NovaBadge';
+import NutritionBadge from '../components/NutritionBadge';
+import { APP_NAME } from '../lib/constants';
+import { CATEGORIES, PRODUCTS, searchProducts } from '../lib/productsData';
+import { useUser } from '../context/UserContext';
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useUser();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [showNoResults, setShowNoResults] = useState(false);
+  const [searchPerformed, setSearchPerformed] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('recent_searches');
+    if (stored) {
+      setRecentSearches(JSON.parse(stored));
+    }
+    
+    // Check if coming from search
+    const urlParams = new URLSearchParams(location.search);
+    const query = urlParams.get('q');
+    if (query) {
+      setSearchQuery(query);
+      performSearch(query);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      const results = searchProducts(searchQuery);
+      setSearchResults(results.slice(0, 5));
+      setShowSuggestions(true);
+    } else {
+      setSearchResults([]);
+      setShowSuggestions(false);
+      setShowNoResults(false);
+      setSearchPerformed(false);
+    }
+  }, [searchQuery]);
+
+  const performSearch = (query) => {
+    const results = searchProducts(query);
+    setSearchResults(results);
+    setSearchPerformed(true);
+    setShowNoResults(results.length === 0);
+    setShowSuggestions(false);
+  };
+
+  const handleSearch = (query) => {
+    if (query.trim()) {
+      const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5);
+      setRecentSearches(updated);
+      localStorage.setItem('recent_searches', JSON.stringify(updated));
+      performSearch(query);
+    }
+  };
+
+  const handleProductClick = (productId) => {
+    navigate(`/product/${productId}`);
+  };
+
+  const handleCategoryClick = (categoryId) => {
+    navigate(`/category/${categoryId}`);
+  };
+
+  const displayProducts = searchPerformed 
+    ? searchResults 
+    : selectedCategory
+    ? PRODUCTS.filter(p => p.category === selectedCategory)
+    : PRODUCTS.slice(0, 12);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50">
+      {/* Navbar */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
+                <Scan className="w-8 h-8 text-emerald-600" />
+                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  {APP_NAME}
+                </span>
+              </div>
+              
+              <div className="hidden md:flex items-center gap-6">
+                <button
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setSearchQuery('');
+                    setSearchPerformed(false);
+                    setShowNoResults(false);
+                    navigate('/dashboard');
+                  }}
+                  className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors"
+                >
+                  <Home className="w-5 h-5" />
+                  Home
+                </button>
+                <button
+                  onClick={() => navigate('/categories')}
+                  className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors"
+                >
+                  <Grid3x3 className="w-5 h-5" />
+                  Categories
+                </button>
+                <button
+                  onClick={() => navigate('/upload')}
+                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium transition-colors"
+                >
+                  <Upload className="w-5 h-5" />
+                  Upload Product
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {user && (
+                <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Hi, {user.name || 'User'}!</span>
+                </div>
+              )}
+              <button
+                onClick={() => navigate('/account')}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <User className="w-6 h-6 text-gray-700" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Search Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="relative max-w-2xl mx-auto">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
+              placeholder="Search for products, brands, categories..."
+              className="pl-12 pr-4 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
+            />
+          </div>
+
+          {/* Search Suggestions */}
+          {showSuggestions && searchResults.length > 0 && (
+            <Card className="absolute w-full mt-2 p-2 shadow-xl z-50 max-h-96 overflow-y-auto">
+              {searchResults.map(product => (
+                <button
+                  key={product.id}
+                  onClick={() => {
+                    handleProductClick(product.id);
+                    setShowSuggestions(false);
+                    setSearchQuery('');
+                  }}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                >
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{product.name}</p>
+                    <p className="text-sm text-gray-500">{product.brand}</p>
+                  </div>
+                  <NovaBadge novaGroup={product.novaGroup} size="sm" />
+                </button>
+              ))}
+            </Card>
+          )}
+
+          {/* Recent Searches */}
+          {!showSuggestions && !searchPerformed && recentSearches.length > 0 && searchQuery === '' && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-600 mb-2">Recent Searches:</p>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((search, index) => (
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-emerald-100 transition-colors"
+                    onClick={() => handleSearch(search)}
+                  >
+                    {search}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* No Results - Show Upload Option */}
+      {showNoResults && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <Card className="p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                No products found for "{searchQuery}"
+              </h3>
+              <p className="text-gray-600 mb-6">
+                We couldn't find any products matching your search. Would you like to add this product to our database?
+              </p>
+              <button
+                onClick={() => navigate(`/upload?q=${encodeURIComponent(searchQuery)}`)}
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+              >
+                <Upload className="w-5 h-5" />
+                Upload This Product
+              </button>
+              <p className="text-sm text-gray-500 mt-4">
+                Help us grow our database by adding product information
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Top Categories */}
+      {!searchPerformed && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Top Categories</h2>
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="text-emerald-600 hover:text-emerald-700 font-medium text-sm"
+            >
+              View All
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {CATEGORIES.map(category => (
+              <button
+                key={category.id}
+                onClick={() => handleCategoryClick(category.id)}
+                className={`p-4 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 ${
+                  selectedCategory === category.id
+                    ? 'border-emerald-600 bg-emerald-50'
+                    : 'border-gray-200 bg-white hover:border-emerald-300'
+                }`}
+              >
+                <div className="text-4xl mb-2">{category.icon}</div>
+                <p className="text-sm font-medium text-gray-900 text-center">{category.name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Products Grid */}
+      {!showNoResults && displayProducts.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            {searchPerformed 
+              ? `Search Results (${displayProducts.length})`
+              : selectedCategory 
+              ? 'Category Products' 
+              : 'Popular Products'}
+          </h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {displayProducts.map(product => (
+              <Card
+                key={product.id}
+                onClick={() => handleProductClick(product.id)}
+                className="group cursor-pointer overflow-hidden hover:shadow-2xl transition-all duration-300 border-0"
+              >
+                <div className="relative overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                  <div className="absolute top-2 right-2 flex flex-col gap-2">
+                    <NovaBadge novaGroup={product.novaGroup} size="sm" />
+                    <Badge className="bg-white/90 text-gray-900 backdrop-blur-sm border-gray-200">
+                      {product.dietType}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 group-hover:text-emerald-600 transition-colors line-clamp-2 mb-1">
+                        {product.name}
+                      </h3>
+                      <p className="text-sm text-gray-500">{product.brand} • {product.weight}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Nutrition Preview */}
+                  <div className="flex flex-wrap gap-1.5">
+                    <NutritionBadge nutrient="calories" value={product.nutrition.calories} compact />
+                    <NutritionBadge nutrient="protein" value={product.nutrition.protein} compact />
+                    <NutritionBadge nutrient="fiber" value={product.nutrition.fiber} compact />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
