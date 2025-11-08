@@ -119,7 +119,9 @@ def predict_food_nova(data: FoodInput):
         data.TOTAL_VITAMIN_A_MCG
     ]])
 
-    probs = model.predict_proba(features)[0]  # class probabilities
+    features_log = np.log1p(features)
+
+    probs = model.predict_proba(features_log)[0]  # class probabilities
     nova_class = int(np.argmax(probs) + 1)    # predicted NOVA
     fpro_score = float(((1 - probs[0]) + probs[3]) / 2)  # simplified FPro
 
