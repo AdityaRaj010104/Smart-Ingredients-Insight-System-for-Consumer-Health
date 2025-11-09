@@ -4,9 +4,11 @@ import joblib
 from extractor import extract_json_from_image
 from fastapi import UploadFile, File, HTTPException
 from fastapi import FastAPI
+import pandas as pd
 from pydantic import BaseModel
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 """"
 MODEL_PATH = "model/final_model_rf.pkl"   # change if needed
@@ -121,7 +123,15 @@ def predict_food_nova(data: FoodInput):
 
     features_log = np.log1p(features)
 
-    probs = model.predict_proba(features_log)[0]  # class probabilities
+    features_log_df = pd.DataFrame(features_log, columns=[
+    'ENERGY_KCAL', 'PROTEIN_G', 'CARBOHYDRATE_G', 'SUGARS_TOTALG',
+    'FIBER_TOTAL_DIETARY_G', 'TOTAL_FAT_G', 'FATTY_ACIDS_TOTAL_SATURATED_G',
+    'CHOLESTEROL_MG', 'VITAMIN_C_MG', 'CALCIUM_MG', 'IRONMG',
+    'SODIUM_MG', 'TOTAL_VITAMIN_A_MCG'
+])
+
+
+    probs = model.predict_proba(features_log_df)[0]  # class probabilities
     nova_class = int(np.argmax(probs) + 1)    # predicted NOVA
     fpro_score = float(((1 - probs[0]) + probs[3]) / 2)  # simplified FPro
 
@@ -131,37 +141,40 @@ def predict_food_nova(data: FoodInput):
     }
 
 @app.post("/extract_and_predict")
+@app.post("/extract_and_predict")
 async def extract_and_predict(file: UploadFile = File(...)):
+    feature_order = [
+        'ENERGY_KCAL', 'PROTEIN_G', 'CARBOHYDRATE_G', 'SUGARS_TOTALG',
+        'FIBER_TOTAL_DIETARY_G', 'TOTAL_FAT_G', 'FATTY_ACIDS_TOTAL_SATURATED_G',
+        'CHOLESTEROL_MG', 'VITAMIN_C_MG', 'CALCIUM_MG', 'IRONMG', 'SODIUM_MG',
+        'TOTAL_VITAMIN_A_MCG'
+    ]
+
     try:
         # Save uploaded image temporarily
         temp_path = f"temp_{file.filename}"
         with open(temp_path, "wb") as f:
             f.write(await file.read())
 
-        # Extract nutrient info from Gemini
+        # Extract nutrient info from image
         extracted_data = extract_json_from_image(temp_path)
 
         if "error" in extracted_data:
             raise HTTPException(status_code=500, detail=extracted_data["error"])
 
-        # Predict from extracted features
-        features = np.array([[
-            extracted_data.get('ENERGY_KCAL', 0),
-            extracted_data.get('PROTEIN_G', 0),
-            extracted_data.get('CARBOHYDRATE_G', 0),
-            extracted_data.get('SUGARS_TOTALG', 0),
-            extracted_data.get('FIBER_TOTAL_DIETARY_G', 0),
-            extracted_data.get('TOTAL_FAT_G', 0),
-            extracted_data.get('FATTY_ACIDS_TOTAL_SATURATED_G', 0),
-            extracted_data.get('CHOLESTEROL_MG', 0),
-            extracted_data.get('VITAMIN_C_MG', 0),
-            extracted_data.get('CALCIUM_MG', 0),
-            extracted_data.get('IRONMG', 0),
-            extracted_data.get('SODIUM_MG', 0),
-            extracted_data.get('TOTAL_VITAMIN_A_MCG', 0)
-        ]])
+        # Construct feature values in correct order, filling missing with 0
+        feature_values = [extracted_data.get(key, 0) for key in feature_order]
 
-        probs = model.predict_proba(features)[0]
+        # Convert to numpy array and log-transform
+        features = np.array([feature_values])
+        features_log = np.log1p(features)
+
+        # Create DataFrame with same columns as model expects
+        features_log_df = pd.DataFrame(features_log, columns=feature_order)
+        print(features_log_df)
+
+        # Make prediction
+        probs = model.predict_proba(features_log_df)[0]
         nova_class = int(np.argmax(probs) + 1)
         fpro_score = float(((1 - probs[0]) + probs[3]) / 2)
 
@@ -173,6 +186,11 @@ async def extract_and_predict(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Remove temp file safely
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
 
 # ---------------------------
 # Test Root Endpoint

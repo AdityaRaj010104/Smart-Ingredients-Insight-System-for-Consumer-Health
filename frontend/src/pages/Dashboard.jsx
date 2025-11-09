@@ -12,6 +12,7 @@ import { CATEGORIES, PRODUCTS, searchProducts } from '../lib/productsData';
 import { useUser } from '../context/UserContext';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; 
 
 
 const Dashboard = () => {
@@ -24,6 +25,11 @@ const Dashboard = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [popularProducts, setPopularProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+
+  const [uploading, setUploading] = useState(false);
+  const [predictionResult, setPredictionResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [manualMode, setManualMode] = useState(false);
 
 
 
@@ -111,7 +117,7 @@ const Dashboard = () => {
     setRecentSearches(updated);
     localStorage.setItem("recent_searches", JSON.stringify(updated));
 
-    navigate(`/search?q=${encodeURIComponent(query)}`);
+    //navigate(`/search?q=${encodeURIComponent(query)}`);
   };
 
 
@@ -124,6 +130,48 @@ const Dashboard = () => {
   };
 
 
+const handleImageUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  setSelectedFile(file);
+  setUploading(true);
+  setPredictionResult(null);
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/extract_and_predict", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Upload failed");
+
+    const data = await res.json();
+    setPredictionResult(data);
+  } catch (err) {
+    console.error("Error:", err);
+    alert("Failed to process image. Please try again.");
+  } finally {
+    setUploading(false);
+  }
+};
+
+const formatFeatureName = (key) => {
+  const customNames = {
+    energy_kcal: "Calories (kcal)",
+    FATTY_ACIDS_TOTAL_SATURATED_G: "Total Saturated Fats (g)",
+  };
+
+  if (customNames[key]) return customNames[key];
+
+  return key
+    .replace(/_/g, " ") // replace underscores with spaces
+    .toLowerCase()      // make lowercase
+    .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize first letter of each word
+};
 
 
   useEffect(() => {
@@ -222,55 +270,260 @@ const Dashboard = () => {
       </nav>
 
       {/* Search Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="relative max-w-2xl mx-auto">
-  <div className="relative">
-    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+      {/* Search Bar & Action Buttons */}
+<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div className="relative max-w-5xl mx-auto">
     
-    <Input
-      type="text"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
-      placeholder="Search for products, brands, categories..."
-      className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
-    />
+    {/* Search Bar with Action Buttons */}
+    <div className="flex items-center gap-3">
+      {/* Search Input */}
+      <div className="relative flex-1">
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        
+        <Input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
+          placeholder="Search for products, brands, categories..."
+          className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
+        />
 
-    {/* Clear button */}
-    {searchQuery && (
-      <button
-        onClick={() => {
-          setSearchQuery('');
-          setShowSuggestions(false);
+        {/* Clear button */}
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setShowSuggestions(false);
+            }}
+            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && searchResults.length > 0 && (
+          <Card className="absolute w-full mt-2 p-2 shadow-xl z-50 max-h-96 overflow-y-auto">
+            {searchResults.map(product => (
+              <button
+                key={product.id}
+                onClick={() => handleProductClick(product.id)}
+                className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">{product.name}</p>
+                  <p className="text-sm text-gray-500">{product.category}</p>
+                </div>
+                <NovaBadge novaGroup={product.nova_group} size="sm" />
+              </button>
+            ))}
+          </Card>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2">
+        {/* Upload Button */}
+        <label
+          htmlFor="nutrition-upload"
+          className={`p-4 rounded-xl font-medium flex items-center gap-2 shadow-md transition-all cursor-pointer
+            ${uploading || manualMode
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"}
+          `}
+          title="Upload nutrition label"
+        >
+          {uploading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <Scan className="w-6 h-6" />
+          )}
+        </label>
+        <input
+          id="nutrition-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+          disabled={uploading || manualMode}
+        />
+
+        {/* Manual Input Button */}
+        <button
+          onClick={() => {
+            setManualMode(!manualMode);
+            setPredictionResult(null);
+          }}
+          disabled={uploading}
+          className={`p-4 rounded-xl font-medium shadow-md transition-all
+            ${manualMode
+              ? "bg-teal-600 text-white"
+              : uploading
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : "bg-gray-100 hover:bg-gray-200 text-gray-700"}
+          `}
+          title="Enter nutrients manually"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    {/* Manual Input Form */}
+    {manualMode && (
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setUploading(true);
+          const formData = Object.fromEntries(new FormData(e.target).entries());
+
+          try {
+            const res = await fetch("http://127.0.0.1:8000/predict", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(
+                Object.fromEntries(
+                  Object.entries(formData).map(([k, v]) => [k, parseFloat(v) || 0])
+                )
+              ),
+            });
+            if (!res.ok) throw new Error("Prediction failed");
+            const data = await res.json();
+            setPredictionResult(data);
+          } catch (err) {
+            console.error(err);
+            alert("Failed to predict. Please check input values.");
+          } finally {
+            setUploading(false);
+          }
         }}
-        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        className="mt-6 bg-white shadow-lg border border-gray-200 p-6 rounded-xl"
       >
-        <X className="w-5 h-5" />
-      </button>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Enter Nutrition Information</h3>
+          <button
+            type="button"
+            onClick={() => setManualMode(false)}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[
+            "ENERGY_KCAL",
+            "PROTEIN_G",
+            "CARBOHYDRATE_G",
+            "SUGARS_TOTALG",
+            "FIBER_TOTAL_DIETARY_G",
+            "TOTAL_FAT_G",
+            "FATTY_ACIDS_TOTAL_SATURATED_G",
+            "CHOLESTEROL_MG",
+            "VITAMIN_C_MG",
+            "CALCIUM_MG",
+            "IRONMG",
+            "SODIUM_MG",
+            "TOTAL_VITAMIN_A_MCG",
+          ].map((field) => (
+            <div key={field} className="flex flex-col">
+              <label className="text-xs font-medium text-gray-700 mb-1">
+                {formatFeatureName(field)}
+              </label>
+              <input
+                name={field}
+                type="number"
+                step="any"
+                placeholder="0"
+                className="border border-gray-300 rounded-lg p-2 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <Button
+            type="submit"
+            disabled={uploading}
+            className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all ${
+              uploading
+                ? "bg-gray-400 cursor-not-allowed text-white"
+                : "bg-emerald-600 hover:bg-emerald-700 text-white"
+            }`}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Predicting...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Predict NOVA
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    )}
+
+    {/* Prediction Result Box */}
+    {predictionResult && (
+      <Card className="relative mt-6 bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
+        <button
+          onClick={() => setPredictionResult(null)}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <h3 className="text-xl font-semibold text-emerald-700 mb-4">
+          Nutrition Analysis Results
+        </h3>
+
+        <div className="overflow-x-auto mb-6">
+          <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-gray-700 font-semibold">Nutrient</th>
+                <th className="px-4 py-2 text-left text-gray-700 font-semibold">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(predictionResult.extracted_features || {})
+                .filter(([_, value]) => value !== 0 && value !== "" && value !== null)
+                .map(([key, value]) => (
+                  <tr key={key} className="border-t">
+                    <td className="px-4 py-2 font-medium text-gray-800">
+                      {formatFeatureName(key)}
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{value}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-emerald-50 p-4 rounded-xl">
+          <div className="flex items-center gap-3">
+            <NovaBadge novaGroup={predictionResult.nova_class} size="lg" />
+            <div>
+              <p className="text-sm text-gray-600">Predicted NOVA Class</p>
+              <p className="text-2xl font-bold text-emerald-700">{predictionResult.nova_class}</p>
+            </div>
+          </div>
+
+          <Badge className="text-lg bg-white text-emerald-800 px-6 py-3 rounded-xl shadow-sm border border-emerald-200">
+            FPro Score: <span className="font-bold">{predictionResult.fpro_score}</span>
+          </Badge>
+        </div>
+      </Card>
     )}
   </div>
-
-  {/* Suggestions */}
-  {showSuggestions && searchResults.length > 0 && (
-    <Card className="absolute w-full mt-2 p-2 shadow-xl z-50 max-h-96 overflow-y-auto">
-      {searchResults.map(product => (
-        <button
-          key={product.id}
-          onClick={() => handleProductClick(product.id)}
-          className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
-        >
-          <div className="flex-1">
-            <p className="font-medium text-gray-900">{product.name}</p>
-            <p className="text-sm text-gray-500">{product.category}</p>
-          </div>
-          <NovaBadge novaGroup={product.nova_group} size="sm" />
-        </button>
-      ))}
-    </Card>
-  )}
 </div>
-
-      </div>
 
       {/* Top Categories */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
