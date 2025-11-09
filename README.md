@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -18,4 +18,3 @@ If you are developing a production application, we recommend using TypeScript wi
 =======
 # Smart-Ingredients-Insight-System-for-Consumer-Health
 A practical implementation of a FoodProX-style model using the Open Food Facts and FNDDS datasets. The project automatically assigns processing levels (NOVA 1–4) based on nutrient profiles and predicts a continuous FPro score. Built for education, and real-world applications in food health and nutrition analytics.
->>>>>>> edfd0e058294aff55c35d547b18fb651fbbbf177
