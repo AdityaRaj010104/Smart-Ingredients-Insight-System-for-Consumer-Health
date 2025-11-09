@@ -1,0 +1,321 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Scan, Menu, X, ChevronDown, Brain, Sparkles, Shield, Zap, Activity, Star, Quote, ArrowRight } from 'lucide-react';
+import { APP_NAME, APP_TAGLINE, APP_DESCRIPTION, FEATURES, STATS, TESTIMONIALS, FAQS, FOOTER_LINKS } from '../lib/constants';
+
+const LandingPage = () => {
+  const navigate = useNavigate();
+  const [openFaq, setOpenFaq] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const iconMap = {
+    brain: Brain,
+    scan: Scan,
+    sparkles: Sparkles,
+    shield: Shield,
+    zap: Zap,
+    activity: Activity
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Navbar */}
+      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-200 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Scan className="w-8 h-8 text-emerald-600" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-ping" />
+              </div>
+              <span className="text-2xl font-bold bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                {APP_NAME}
+              </span>
+            </div>
+            
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-6">
+              <a href="#features" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">Features</a>
+              <a href="#testimonials" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">Reviews</a>
+              <a href="#faq" className="text-gray-700 hover:text-emerald-600 font-medium transition-colors">FAQ</a>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-gray-700 hover:text-emerald-600 font-medium transition-colors"
+              >
+                Explore
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-6 py-2.5 bg-linear-to-r from-emerald-600 to-teal-600 text-white rounded-full hover:shadow-lg hover:shadow-emerald-500/50 transition-all transform hover:scale-105 font-medium"
+              >
+                Sign In
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden py-4 space-y-2 border-t border-gray-100">
+              <a href="#features" className="block px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-lg">Features</a>
+              <a href="#testimonials" className="block px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-lg">Reviews</a>
+              <a href="#faq" className="block px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-lg">FAQ</a>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-lg"
+              >
+                Explore
+              </button>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full text-left px-4 py-2 text-emerald-600 font-medium hover:bg-emerald-50 rounded-lg"
+              >
+                Sign In
+              </button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-linear-to-br from-emerald-50 via-teal-50/30 to-white relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse" style={{ animationDelay: '1s' }} />
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 rounded-full mb-6 animate-bounce">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-semibold text-emerald-700">AI-Powered Nutrition Assistant</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+              {APP_TAGLINE.split(',')[0]}
+              <br />
+              <span className="bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                {APP_TAGLINE.split(',')[1]}
+              </span>
+            </h1>
+            
+            <p className="text-xl text-gray-600 mb-10 leading-relaxed max-w-3xl mx-auto">
+              {APP_DESCRIPTION}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => navigate('/signup')}
+                className="group px-8 py-4 bg-linear-to-r from-emerald-600 to-teal-600 text-white rounded-full hover:shadow-2xl hover:shadow-emerald-500/50 transition-all transform hover:scale-105 font-semibold text-lg flex items-center justify-center gap-2"
+              >
+                Get Started Free
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="px-8 py-4 bg-white text-emerald-600 border-2 border-emerald-600 rounded-full hover:bg-emerald-50 transition-all font-semibold text-lg shadow-lg"
+              >
+                Explore Products
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16 max-w-4xl mx-auto">
+              {STATS.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
+                    {stat.value}
+                  </div>
+                  <div className="text-gray-600 font-medium">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hero Image */}
+          <div className="mt-20 rounded-3xl overflow-hidden shadow-2xl border border-gray-200">
+            <div className="bg-linear-to-br from-emerald-100 via-teal-100 to-cyan-100 h-96 flex items-center justify-center relative">
+              <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+              <div className="text-center relative z-10">
+                <Scan className="w-32 h-32 text-emerald-600 mx-auto mb-4 animate-pulse" />
+                <p className="text-gray-700 text-xl font-semibold">Scan. Analyze. Shop Smart.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Powerful Features for Your
+              <span className="bg-linear-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent"> Health</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Everything you need to make informed, healthy shopping decisions
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {FEATURES.map((feature, index) => {
+              const Icon = iconMap[feature.icon];
+              return (
+                <div
+                  key={index}
+                  className="group p-8 bg-white border border-gray-200 rounded-2xl hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 transform hover:-translate-y-2"
+                >
+                  <div className="w-14 h-14 bg-linear-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Icon className="w-7 h-7 text-emerald-600" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-gray-900">{feature.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section id="testimonials" className="py-20 px-4 sm:px-6 lg:px-8 bg-linear-to-br from-white to-emerald-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Loved by Health-Conscious Shoppers
+            </h2>
+            <p className="text-xl text-gray-600">See what our users have to say</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {TESTIMONIALS.map((testimonial, index) => (
+              <div
+                key={index}
+                className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl transition-all"
+              >
+                <Quote className="w-10 h-10 text-emerald-600 mb-4" />
+                <p className="text-gray-700 mb-6 leading-relaxed italic">{testimonial.content}</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-linear-to-br from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                    {testimonial.avatar}
+                  </div>
+                  <div>
+                    <div className="font-bold text-gray-900">{testimonial.name}</div>
+                    <div className="text-sm text-gray-600">{testimonial.role}</div>
+                  </div>
+                </div>
+                <div className="flex gap-1 mt-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-gray-600">Everything you need to know</p>
+          </div>
+
+          <div className="space-y-4">
+            {FAQS.map((faq, index) => (
+              <div
+                key={index}
+                className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="w-full px-6 py-5 flex justify-between items-center hover:bg-gray-50 transition-colors text-left"
+                >
+                  <span className="font-semibold text-gray-900 pr-4">{faq.question}</span>
+                  <ChevronDown
+                    className={`w-5 h-5 text-emerald-600 transition-transform shrink-0 ${
+                      openFaq === index ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {openFaq === index && (
+                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-linear-to-r from-emerald-600 to-teal-600 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Ready to Transform Your Shopping?
+          </h2>
+          <p className="text-xl text-emerald-50 mb-10">
+            Join thousands of health-conscious shoppers today
+          </p>
+          <button
+            onClick={() => navigate('/signup')}
+            className="px-10 py-4 bg-white text-emerald-600 rounded-full hover:shadow-2xl transition-all transform hover:scale-105 font-bold text-lg"
+          >
+            Start Your Free Journey
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Scan className="w-6 h-6 text-emerald-400" />
+                <span className="text-xl font-bold">{APP_NAME}</span>
+              </div>
+              <p className="text-gray-400 leading-relaxed">
+                {APP_TAGLINE}
+              </p>
+            </div>
+            
+            {Object.entries(FOOTER_LINKS).map(([category, links]) => (
+              <div key={category}>
+                <h3 className="font-semibold mb-4 capitalize">{category}</h3>
+                <ul className="space-y-2">
+                  {links.map((link, index) => (
+                    <li key={index}>
+                      <a href={link.href} className="text-gray-400 hover:text-emerald-400 transition-colors">
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 {APP_NAME}. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default LandingPage;
