@@ -10,6 +10,7 @@ import ProductDetail from './pages/ProductDetail';
 import CategoryPage from './pages/CategoryPage';
 import CategoriesPage from './pages/CategoriesPage';
 import Account from './pages/Account';
+import PopularProductDetail from './PopularProductDetail';
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
          <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/popular/:name" element={<PopularProductDetail />} />
+
         </Routes>
       </Router>
     </UserProvider>

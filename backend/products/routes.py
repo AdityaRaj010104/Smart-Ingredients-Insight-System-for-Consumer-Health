@@ -21,13 +21,15 @@ def get_image(name):
 
 
 # Function to get selected products
-def get_selected_products(ids):
+def get_selected_products(ids, table_name="nutri_data"):
     conn = get_db_connection()
     placeholders = ', '.join('?' for _ in ids)
     query = f"""
-        SELECT id, MAIN_FOOD_DESCRIPTION, WWEIA_CATEGORY_DESCRIPTION,
+        SELECT id,
+               { 'MAIN_FOOD_DESCRIPTION' if table_name == 'nutri_data' else 'PRODUCT_NAME' } AS name,
+               WWEIA_CATEGORY_DESCRIPTION,
                ENERGY_KCAL, NOVA_GROUP, PROTEIN_G, FIBER_TOTAL_DIETARY_G
-        FROM nutri_data
+        FROM {table_name}
         WHERE id IN ({placeholders})
     """
     rows = conn.execute(query, ids).fetchall()
@@ -35,8 +37,7 @@ def get_selected_products(ids):
 
     products = []
     for row in rows:
-        full_name = row["MAIN_FOOD_DESCRIPTION"]
-        name = full_name.split(',')[0].strip()
+        name = row["name"].split(',')[0].strip() if row["name"] else "Unknown"
         products.append({
             "id": row["id"],
             "name": name,
@@ -45,17 +46,93 @@ def get_selected_products(ids):
             "calories": row["ENERGY_KCAL"],
             "protein": row["PROTEIN_G"],
             "fiber": row["FIBER_TOTAL_DIETARY_G"],
-            "image": image_map.get(name, "https://example.com/default.jpg")
+            "image": get_image(name)
         })
     return products
 
+   
+
 
 # Route: Get Popular Products
+
 @products_bp.route("/products/popular", methods=["GET"])
 def get_popular_products():
-    popular_ids = [1, 291, 355, 800]  # customize IDs
-    products = get_selected_products(popular_ids)
+    conn = get_db_connection()
+    query = """
+        SELECT PRODUCT_NAME, WWEIA_CATEGORY_DESCRIPTION, ENERGY_KCAL,
+               PROTEIN_G, FIBER_TOTAL_DIETARY_G, NOVA_GROUP
+        FROM extra_products
+    """
+    rows = conn.execute(query).fetchall()
+    conn.close()
+
+    excluded_items = ["Maggi", "Pepsi 1",]
+
+    products = []
+    for row in rows:
+        name = row["PRODUCT_NAME"].split(',')[0].strip()
+
+        # Skip excluded names
+        if any(ex.lower() in name.lower() for ex in excluded_items):
+            continue
+
+        products.append({
+            "name": name,
+            "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+            "nova_group": row["NOVA_GROUP"],
+            "calories": row["ENERGY_KCAL"],
+            "protein": row["PROTEIN_G"],
+            "fiber": row["FIBER_TOTAL_DIETARY_G"],
+            "image": get_image(name)
+        })
+
     return jsonify(products)
+
+
+@products_bp.route("/products/extra/<string:product_name>", methods=["GET"])
+def get_extra_product_detail(product_name):
+    conn = get_db_connection()
+    query = """
+        SELECT PRODUCT_NAME, WWEIA_CATEGORY_DESCRIPTION, ENERGY_KCAL, CARBOHYDRATE_G,
+               SUGARS_TOTALG, TOTAL_FAT_G, PROTEIN_G, FIBER_TOTAL_DIETARY_G,
+               NOVA_GROUP, SALT_MG, ZINC_MG, TOTAL_VITAMIN_A_MCG, VITAMIN_C_MG,
+               VITAMIN_D_MCG, THIAMIN_MG, RIBOFLAVIN_MG, VITAMIN_B6_MG,
+               VITAMIN_B12_MCG, CHOLESTEROL_100G
+        FROM extra_products
+        WHERE PRODUCT_NAME = ?
+    """
+    row = conn.execute(query, (product_name,)).fetchone()
+    conn.close()
+
+    if row is None:
+        return jsonify({"error": "Product not found"}), 404
+
+    name = row["PRODUCT_NAME"].split(',')[0].strip()
+
+    product = {
+        "name": name,
+        "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+        "nova_group": row["NOVA_GROUP"],
+        "calories": row["ENERGY_KCAL"],
+        "carbs": row["CARBOHYDRATE_G"],
+        "sugar": row["SUGARS_TOTALG"],
+        "fat": row["TOTAL_FAT_G"],
+        "protein": row["PROTEIN_G"],
+        "fiber": row["FIBER_TOTAL_DIETARY_G"],
+        "salt": row["SALT_MG"],
+        "vitamin_a": row["TOTAL_VITAMIN_A_MCG"],
+        "vitamin_c": row["VITAMIN_C_MG"],
+        "vitamin_d": row["VITAMIN_D_MCG"],
+        "vitamin_b6": row["VITAMIN_B6_MG"],
+        "vitamin_b12": row["VITAMIN_B12_MCG"],
+        "zinc": row["ZINC_MG"],
+        "cholesterol": row["CHOLESTEROL_100G"],
+        "image": get_image(name)
+    }
+
+    return jsonify(product)
+
+   
 
 @products_bp.route("/products/<int:id>", methods=["GET"])
 def get_product_detail(id):

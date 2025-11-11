@@ -12,7 +12,7 @@ import { CATEGORIES, PRODUCTS, searchProducts } from '../lib/productsData';
 import { useUser } from '../context/UserContext';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { Loader2 } from 'lucide-react'; 
+import { Loader2 } from 'lucide-react';
 
 
 const Dashboard = () => {
@@ -76,27 +76,27 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-  if (searchQuery.trim().length > 0) {
-    const fetchResults = async () => {
-      try {
-        const res = await fetch(
-          `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}`
-        );
-        const data = await res.json();
-        setSearchResults(data.slice(0, 15)); // top 5 suggestions
-        setShowSuggestions(true);
-      } catch (err) {
-        console.error('Error fetching search results:', err);
-        setSearchResults([]);
-        setShowSuggestions(false);
-      }
-    };
-    fetchResults();
-  } else {
-    setSearchResults([]);
-    setShowSuggestions(false);
-  }
-}, [searchQuery]);
+    if (searchQuery.trim().length > 0) {
+      const fetchResults = async () => {
+        try {
+          const res = await fetch(
+            `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}`
+          );
+          const data = await res.json();
+          setSearchResults(data.slice(0, 15)); // top 5 suggestions
+          setShowSuggestions(true);
+        } catch (err) {
+          console.error('Error fetching search results:', err);
+          setSearchResults([]);
+          setShowSuggestions(false);
+        }
+      };
+      fetchResults();
+    } else {
+      setSearchResults([]);
+      setShowSuggestions(false);
+    }
+  }, [searchQuery]);
 
 
   const categoryColors = [
@@ -124,54 +124,92 @@ const Dashboard = () => {
   const handleProductClick = (productId) => {
     navigate(`/product/${productId}`);
   };
+  // handleProductClick now uses name for popular products (extra_products)
+  const handlePopularProductClick = (product) => {
+    // If the product came from extra_products (popular ones), open new page
+    if (product.name) {
+      navigate(`/popular/${encodeURIComponent(product.name)}`);
+    } else {
+      // fallback for old dataset (with id)
+      navigate(`/product/${product.id}`);
+    }
+  };
+
 
   const handleCategoryClick = (categoryName) => {
     navigate(`/category/${encodeURIComponent(categoryName)}`);
   };
 
 
-const handleImageUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  setSelectedFile(file);
-  setUploading(true);
-  setPredictionResult(null);
+    setSelectedFile(file);
+    setUploading(true);
+    setPredictionResult(null);
 
-  const formData = new FormData();
-  formData.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-  try {
-    const res = await fetch("http://127.0.0.1:8000/extract_and_predict", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("http://127.0.0.1:8000/extract_and_predict", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) throw new Error("Upload failed");
 
-    const data = await res.json();
-    setPredictionResult(data);
-  } catch (err) {
-    console.error("Error:", err);
-    alert("Failed to process image. Please try again.");
-  } finally {
-    setUploading(false);
-  }
-};
-
-const formatFeatureName = (key) => {
-  const customNames = {
-    energy_kcal: "Calories (kcal)",
-    FATTY_ACIDS_TOTAL_SATURATED_G: "Total Saturated Fats (g)",
+      const data = await res.json();
+      setPredictionResult(data);
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Failed to process image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
-  if (customNames[key]) return customNames[key];
+  const formatFeatureName = (key) => {
+    const customNames = {
+      energy_kcal: "Calories (kcal)",
+      FATTY_ACIDS_TOTAL_SATURATED_G: "Total Saturated Fats (g)",
+    };
 
-  return key
-    .replace(/_/g, " ") // replace underscores with spaces
-    .toLowerCase()      // make lowercase
-    .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize first letter of each word
-};
+    if (customNames[key]) return customNames[key];
+
+    return key
+      .replace(/_/g, " ") // replace underscores with spaces
+      .toLowerCase()      // make lowercase
+      .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize first letter of each word
+  };
+
+  const getPlaceholderImage = (category) => {
+    const categoryImages = {
+      "Bourbon Creams": "https://www.bigbasket.com/media/uploads/p/xl/100012354_30-britannia-bourbon-chocolate-cream-biscuits.jpg",
+      "Bournville Dark Chocolate bar": "https://tse4.mm.bing.net/th/id/OIP.jl5HHko54qJfRYT7u36ABAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Cream Crackers": "https://tse4.mm.bing.net/th/id/OIP.GSouOL8kyzwNUbMLC2sjDwHaFq?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Ferrero Rocher": "https://www.rakhiz.com/catalog/rakhi/CHOAC001.jpg",
+      "Heinz tomato ketchup": "https://tse4.mm.bing.net/th/id/OIP.Gjxlry6hX2bO0A16PbXh1gHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Kurkure": "https://tse3.mm.bing.net/th/id/OIP.c0WiMC0DEy7PUjku8-BZoAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Lays": "https://m.media-amazon.com/images/I/71kOsITKSkL.jpg",
+      "Oreo": "https://th.bing.com/th/id/R.4870bcda87407c7b3eea0bf599809f86?rik=rSFG%2bJJgP4MVpw&riu=http%3a%2f%2fimages5.fanpop.com%2fimage%2fphotos%2f31900000%2fOreo-oreo-31905998-2000-1317.jpg&ehk=UJuj4Krp91jPCFOVSHOAAsQCg0NnGNJWU1eFpJIzL50%3d&risl=&pid=ImgRaw&r=0",
+      "Sunflower Oil": "https://tse1.mm.bing.net/th/id/OIP.ex03LxcKKqW0juoLsiUyrAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Walnuts": "https://th.bing.com/th/id/R.ff3456d6fe93659b2762447ba0ca6dc9?rik=ogOmV03YhpG0Bg&riu=http%3a%2f%2fs3-us-west-2.amazonaws.com%2fdrann%2fwp-content%2fuploads%2f2017%2f09%2f26200539%2fwalnuts-on-wooden-table.jpeg&ehk=s%2fRRTT%2bQOVe6DuGrh1NFXd%2faFTk%2bPkwd4oXAUZR9Qig%3d&risl=1&pid=ImgRaw&r=0",
+      "Aashirvaad Whole Wheat Atta": "https://tse3.mm.bing.net/th/id/OIP.Ym1fEI1UN53t_mMmWEdm3QHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "India Gate Brown Rice": "https://kiasumart.com/wp-content/uploads/2020/08/INDIA-GATE-BROWN-BASMATHI-RICE-5KG-F.jpg",
+      "Tata Sampann Toor Dal": "https://5.imimg.com/data5/ECOM/Default/2023/6/313587974/UK/LB/FI/73577670/tata-sanpann-toor-arhar-dal-30kg-1675247435622-sku-0153-0-1000x1000.jpg",
+      "24 Mantra Organic Brown Rice": "https://th.bing.com/th/id/R.0920ca76c9ffe2470560b1aeb64f34df?rik=ju1HI5U3HrcopQ&riu=http%3a%2f%2fwww.chennaigrocers.com%2fcdn%2fshop%2ffiles%2f24MantraOrganicSonamasuriBrownRice1kg_1.png%3fcrop%3dcenter%26height%3d1200%26v%3d1734690872%26width%3d1200&ehk=ZqtQVclGW1CgdPwtkjMdhPSrR8Rk9qkCmzoR3i34kMk%3d&risl=&pid=ImgRaw&r=0",
+      "Fortune Soya Chunks": "https://www.fortunefoods.com/wp-content/uploads/2022/12/Soya-Chunks-44g.png",
+
+    };
+
+    // return a category-specific image or a general fallback
+    return (
+      categoryImages[category] ||
+      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c" // general food placeholder
+    );
+  };
 
 
   useEffect(() => {
@@ -271,259 +309,258 @@ const formatFeatureName = (key) => {
 
       {/* Search Bar */}
       {/* Search Bar & Action Buttons */}
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-  <div className="relative max-w-5xl mx-auto">
-    
-    {/* Search Bar with Action Buttons */}
-    <div className="flex items-center gap-3">
-      {/* Search Input */}
-      <div className="relative flex-1">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-        
-        <Input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
-          placeholder="Search for products, brands, categories..."
-          className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
-        />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="relative max-w-5xl mx-auto">
 
-        {/* Clear button */}
-        {searchQuery && (
-          <button
-            onClick={() => {
-              setSearchQuery('');
-              setShowSuggestions(false);
-            }}
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+          {/* Search Bar with Action Buttons */}
+          <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
 
-        {/* Suggestions Dropdown */}
-        {showSuggestions && searchResults.length > 0 && (
-          <Card className="absolute w-full mt-2 p-2 shadow-xl z-50 max-h-96 overflow-y-auto">
-            {searchResults.map(product => (
-              <button
-                key={product.id}
-                onClick={() => handleProductClick(product.id)}
-                className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{product.name}</p>
-                  <p className="text-sm text-gray-500">{product.category}</p>
-                </div>
-                <NovaBadge novaGroup={product.nova_group} size="sm" />
-              </button>
-            ))}
-          </Card>
-        )}
-      </div>
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
+                placeholder="Search for products, brands, categories..."
+                className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
+              />
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-2">
-        {/* Upload Button */}
-        <label
-          htmlFor="nutrition-upload"
-          className={`p-4 rounded-xl font-medium flex items-center gap-2 shadow-md transition-all cursor-pointer
+              {/* Clear button */}
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowSuggestions(false);
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && searchResults.length > 0 && (
+                <Card className="absolute w-full mt-2 p-2 shadow-xl z-50 max-h-96 overflow-y-auto">
+                  {searchResults.map(product => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product.id)}
+                      className="w-full flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">{product.name}</p>
+                        <p className="text-sm text-gray-500">{product.category}</p>
+                      </div>
+                      <NovaBadge novaGroup={product.nova_group} size="sm" />
+                    </button>
+                  ))}
+                </Card>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Upload Button */}
+              <label
+                htmlFor="nutrition-upload"
+                className={`p-4 rounded-xl font-medium flex items-center gap-2 shadow-md transition-all cursor-pointer
             ${uploading || manualMode
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-emerald-600 hover:bg-emerald-700 text-white"}
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"}
           `}
-          title="Upload nutrition label"
-        >
-          {uploading ? (
-            <Loader2 className="w-6 h-6 animate-spin" />
-          ) : (
-            <Scan className="w-6 h-6" />
-          )}
-        </label>
-        <input
-          id="nutrition-upload"
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="hidden"
-          disabled={uploading || manualMode}
-        />
-
-        {/* Manual Input Button */}
-        <button
-          onClick={() => {
-            setManualMode(!manualMode);
-            setPredictionResult(null);
-          }}
-          disabled={uploading}
-          className={`p-4 rounded-xl font-medium shadow-md transition-all
-            ${manualMode
-              ? "bg-teal-600 text-white"
-              : uploading
-              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-              : "bg-gray-100 hover:bg-gray-200 text-gray-700"}
-          `}
-          title="Enter nutrients manually"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    {/* Manual Input Form */}
-    {manualMode && (
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setUploading(true);
-          const formData = Object.fromEntries(new FormData(e.target).entries());
-
-          try {
-            const res = await fetch("http://127.0.0.1:8000/predict", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(
-                Object.fromEntries(
-                  Object.entries(formData).map(([k, v]) => [k, parseFloat(v) || 0])
-                )
-              ),
-            });
-            if (!res.ok) throw new Error("Prediction failed");
-            const data = await res.json();
-            setPredictionResult(data);
-          } catch (err) {
-            console.error(err);
-            alert("Failed to predict. Please check input values.");
-          } finally {
-            setUploading(false);
-          }
-        }}
-        className="mt-6 bg-white shadow-lg border border-gray-200 p-6 rounded-xl"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Enter Nutrition Information</h3>
-          <button
-            type="button"
-            onClick={() => setManualMode(false)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[
-            "ENERGY_KCAL",
-            "PROTEIN_G",
-            "CARBOHYDRATE_G",
-            "SUGARS_TOTALG",
-            "FIBER_TOTAL_DIETARY_G",
-            "TOTAL_FAT_G",
-            "FATTY_ACIDS_TOTAL_SATURATED_G",
-            "CHOLESTEROL_MG",
-            "VITAMIN_C_MG",
-            "CALCIUM_MG",
-            "IRONMG",
-            "SODIUM_MG",
-            "TOTAL_VITAMIN_A_MCG",
-          ].map((field) => (
-            <div key={field} className="flex flex-col">
-              <label className="text-xs font-medium text-gray-700 mb-1">
-                {formatFeatureName(field)}
+                title="Upload nutrition label"
+              >
+                {uploading ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <Scan className="w-6 h-6" />
+                )}
               </label>
               <input
-                name={field}
-                type="number"
-                step="any"
-                placeholder="0"
-                className="border border-gray-300 rounded-lg p-2 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                id="nutrition-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                disabled={uploading || manualMode}
               />
-            </div>
-          ))}
-        </div>
 
-        <div className="flex justify-end mt-6">
-          <Button
-            type="submit"
-            disabled={uploading}
-            className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all ${
-              uploading
-                ? "bg-gray-400 cursor-not-allowed text-white"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white"
-            }`}
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Predicting...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5" />
-                Predict NOVA
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
-    )}
-
-    {/* Prediction Result Box */}
-    {predictionResult && (
-      <Card className="relative mt-6 bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
-        <button
-          onClick={() => setPredictionResult(null)}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <h3 className="text-xl font-semibold text-emerald-700 mb-4">
-          Nutrition Analysis Results
-        </h3>
-
-        <div className="overflow-x-auto mb-6">
-          <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-gray-700 font-semibold">Nutrient</th>
-                <th className="px-4 py-2 text-left text-gray-700 font-semibold">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(predictionResult.extracted_features || {})
-                .filter(([_, value]) => value !== 0 && value !== "" && value !== null)
-                .map(([key, value]) => (
-                  <tr key={key} className="border-t">
-                    <td className="px-4 py-2 font-medium text-gray-800">
-                      {formatFeatureName(key)}
-                    </td>
-                    <td className="px-4 py-2 text-gray-600">{value}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-emerald-50 p-4 rounded-xl">
-          <div className="flex items-center gap-3">
-            <NovaBadge novaGroup={predictionResult.nova_class} size="lg" />
-            <div>
-              <p className="text-sm text-gray-600">Predicted NOVA Class</p>
-              <p className="text-2xl font-bold text-emerald-700">{predictionResult.nova_class}</p>
+              {/* Manual Input Button */}
+              <button
+                onClick={() => {
+                  setManualMode(!manualMode);
+                  setPredictionResult(null);
+                }}
+                disabled={uploading}
+                className={`p-4 rounded-xl font-medium shadow-md transition-all
+            ${manualMode
+                    ? "bg-teal-600 text-white"
+                    : uploading
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"}
+          `}
+                title="Enter nutrients manually"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <Badge className="text-lg bg-white text-emerald-800 px-6 py-3 rounded-xl shadow-sm border border-emerald-200">
-            FPro Score: <span className="font-bold">{predictionResult.fpro_score}</span>
-          </Badge>
+          {/* Manual Input Form */}
+          {manualMode && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setUploading(true);
+                const formData = Object.fromEntries(new FormData(e.target).entries());
+
+                try {
+                  const res = await fetch("http://127.0.0.1:8000/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(
+                      Object.fromEntries(
+                        Object.entries(formData).map(([k, v]) => [k, parseFloat(v) || 0])
+                      )
+                    ),
+                  });
+                  if (!res.ok) throw new Error("Prediction failed");
+                  const data = await res.json();
+                  setPredictionResult(data);
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to predict. Please check input values.");
+                } finally {
+                  setUploading(false);
+                }
+              }}
+              className="mt-6 bg-white shadow-lg border border-gray-200 p-6 rounded-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Enter Nutrition Information</h3>
+                <button
+                  type="button"
+                  onClick={() => setManualMode(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[
+                  "ENERGY_KCAL",
+                  "PROTEIN_G",
+                  "CARBOHYDRATE_G",
+                  "SUGARS_TOTALG",
+                  "FIBER_TOTAL_DIETARY_G",
+                  "TOTAL_FAT_G",
+                  "FATTY_ACIDS_TOTAL_SATURATED_G",
+                  "CHOLESTEROL_MG",
+                  "VITAMIN_C_MG",
+                  "CALCIUM_MG",
+                  "IRONMG",
+                  "SODIUM_MG",
+                  "TOTAL_VITAMIN_A_MCG",
+                ].map((field) => (
+                  <div key={field} className="flex flex-col">
+                    <label className="text-xs font-medium text-gray-700 mb-1">
+                      {formatFeatureName(field)}
+                    </label>
+                    <input
+                      name={field}
+                      type="number"
+                      step="any"
+                      placeholder="0"
+                      className="border border-gray-300 rounded-lg p-2 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button
+                  type="submit"
+                  disabled={uploading}
+                  className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 shadow-md transition-all ${uploading
+                    ? "bg-gray-400 cursor-not-allowed text-white"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    }`}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Predicting...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Predict NOVA
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Prediction Result Box */}
+          {predictionResult && (
+            <Card className="relative mt-6 bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
+              <button
+                onClick={() => setPredictionResult(null)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <h3 className="text-xl font-semibold text-emerald-700 mb-4">
+                Nutrition Analysis Results
+              </h3>
+
+              <div className="overflow-x-auto mb-6">
+                <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-gray-700 font-semibold">Nutrient</th>
+                      <th className="px-4 py-2 text-left text-gray-700 font-semibold">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(predictionResult.extracted_features || {})
+                      .filter(([_, value]) => value !== 0 && value !== "" && value !== null)
+                      .map(([key, value]) => (
+                        <tr key={key} className="border-t">
+                          <td className="px-4 py-2 font-medium text-gray-800">
+                            {formatFeatureName(key)}
+                          </td>
+                          <td className="px-4 py-2 text-gray-600">{value}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-emerald-50 p-4 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <NovaBadge novaGroup={predictionResult.nova_class} size="lg" />
+                  <div>
+                    <p className="text-sm text-gray-600">Predicted NOVA Class</p>
+                    <p className="text-2xl font-bold text-emerald-700">{predictionResult.nova_class}</p>
+                  </div>
+                </div>
+
+                <Badge className="text-lg bg-white text-emerald-800 px-6 py-3 rounded-xl shadow-sm border border-emerald-200">
+                  FPro Score: <span className="font-bold">{predictionResult.fpro_score}</span>
+                </Badge>
+              </div>
+            </Card>
+          )}
         </div>
-      </Card>
-    )}
-  </div>
-</div>
+      </div>
 
       {/* Top Categories */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -543,8 +580,8 @@ const formatFeatureName = (key) => {
               key={index}
               onClick={() => handleCategoryClick(category)}
               className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 ${selectedCategory === category
-                  ? 'border-emerald-600 bg-emerald-50'
-                  : 'border-gray-200 bg-white hover:border-emerald-300'
+                ? 'border-emerald-600 bg-emerald-50'
+                : 'border-gray-200 bg-white hover:border-emerald-300'
                 }`}
             >
               <div
@@ -571,15 +608,20 @@ const formatFeatureName = (key) => {
           {displayProducts.map(product => (
             <Card
               key={product.id}
-              onClick={() => handleProductClick(product.id)}
+              onClick={() => handlePopularProductClick(product)}
+
               className="group cursor-pointer overflow-hidden hover:shadow-2xl transition-all duration-300 border-0"
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={product.image}
+                  src={
+
+                    getPlaceholderImage(product.name)
+                  }
                   alt={product.name}
                   className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-300"
                 />
+
                 <div className="absolute top-2 right-2 flex flex-col gap-2">
                   <NovaBadge novaGroup={product.nova_group} size="sm" />
                   <Badge className="bg-white/90 text-gray-900 backdrop-blur-sm border-gray-200">
