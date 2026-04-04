@@ -5,21 +5,25 @@ import { ArrowLeft, Loader2, AlertCircle, Scan } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTranslation } from "react-i18next";
 import NovaBadge from "../components/NovaBadge";
+import i18n from "i18next";
 
-const NUTRIENT_INSIGHTS = {
-  calories: "Calories indicate the energy value of this food per 100g.",
-  protein: "Protein helps in muscle building and repair.",
-  carbs: "Carbohydrates provide energy for daily activities.",
-  fat: "Fat is a source of energy and helps absorb vitamins.",
-  fiber: "Fiber aids digestion and promotes gut health.",
-  sugar: "Sugar content affects energy spikes and sweetness.",
-  water: "Water content shows freshness and hydration potential."
-};
+
+// const NUTRIENT_INSIGHTS = {
+//   calories: "Calories indicate the energy value of this food per 100g.",
+//   protein: "Protein helps in muscle building and repair.",
+//   carbs: "Carbohydrates provide energy for daily activities.",
+//   fat: "Fat is a source of energy and helps absorb vitamins.",
+//   fiber: "Fiber aids digestion and promotes gut health.",
+//   sugar: "Sugar content affects energy spikes and sweetness.",
+//   water: "Water content shows freshness and hydration potential."
+// };
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedNutrient, setSelectedNutrient] = useState(null);
@@ -27,7 +31,11 @@ const ProductDetail = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:5000/api/products/${id}`);
+        const lang = i18n.language.split("-")[0];
+
+const res = await fetch(
+  `http://127.0.0.1:5000/api/products/${id}?lang=${lang}`
+);
         const data = await res.json();
         setProduct(data);
       } catch (error) {
@@ -42,7 +50,7 @@ const ProductDetail = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600">
-        <Loader2 className="animate-spin w-6 h-6 mr-2" /> Loading product details...
+        <Loader2 className="animate-spin w-6 h-6 mr-2" /> {t("loadingProduct")}
       </div>
     );
   }
@@ -50,27 +58,26 @@ const ProductDetail = () => {
   if (!product || product.error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Product Not Found</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t("productNotFound")}</h2>
         <button
           onClick={() => navigate(-1)}
           className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
         >
-          Go Back
+          {t("back")}
         </button>
       </div>
     );
   }
 
   const nutrients = [
-    { key: "calories", label: "Calories", value: product.calories, unit: "kcal" },
-    { key: "protein", label: "Protein", value: product.protein, unit: "g" },
-    { key: "carbs", label: "Carbs", value: product.carbs, unit: "g" },
-    { key: "sugar", label: "Sugar", value: product.sugar, unit: "g" },
-    { key: "fiber", label: "Fiber", value: product.fiber, unit: "g" },
-    { key: "fat", label: "Fat", value: product.fat, unit: "g" },
-    { key: "water", label: "Water", value: product.water, unit: "g" }
-  ];
-
+  { key: "calories", label: t("calories"), value: product.calories, unit: "kcal" },
+  { key: "protein", label: t("protein"), value: product.protein, unit: "g" },
+  { key: "carbs", label: t("carbs"), value: product.carbs, unit: "g" },
+  { key: "sugar", label: t("sugar"), value: product.sugar, unit: "g" },
+  { key: "fiber", label: t("fiber"), value: product.fiber, unit: "g" },
+  { key: "fat", label: t("fat"), value: product.fat, unit: "g" },
+  { key: "water", label: t("water"), value: product.water, unit: "g" }
+];
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50 pb-16">
       {/* Header */}
@@ -81,7 +88,7 @@ const ProductDetail = () => {
             className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 transition"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back</span>
+            <span className="font-medium">{t("back")}</span>
           </button>
           <div className="flex items-center gap-2">
             <Scan className="w-6 h-6 text-emerald-600" />
@@ -108,14 +115,14 @@ const ProductDetail = () => {
           {/* Name and Category */}
           <div className="space-y-2">
             <h1 className="text-4xl font-extrabold text-gray-900">{product.name}</h1>
-            <p className="text-lg text-gray-600">{product.category}</p>
+            <p className="text-lg text-gray-600">{product.desc}</p>
           </div>
 
           {/* NOVA Group */}
           <div className="flex items-center gap-4">
             <NovaBadge novaGroup={product.nova_group} size="lg" />
             <Badge className="bg-emerald-100 text-emerald-800 font-medium py-2 px-4 rounded-lg">
-              Processed Level: {product.nova_group}
+               {t("processedLevel")}: {product.nova_group}
             </Badge>
           </div>
 
@@ -123,7 +130,7 @@ const ProductDetail = () => {
           <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-0 shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900">
-                Nutritional Information (per 100g)
+                {t("nutritionalInfo")} ({t("per100g")})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -145,7 +152,7 @@ const ProductDetail = () => {
               {/* Nutrient Insight */}
               {selectedNutrient && (
                 <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-lg shadow">
-                  <p className="text-gray-800 font-medium">{NUTRIENT_INSIGHTS[selectedNutrient]}</p>
+                  <p className="text-gray-800 font-medium">{t(`nutrientInsights.${selectedNutrient}`)}</p>
                 </div>
               )}
             </CardContent>
@@ -154,33 +161,41 @@ const ProductDetail = () => {
           {/* Product Insights */}
           <Card className="bg-white shadow-lg rounded-xl border-0 w-full">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold text-gray-900">Product Insights</CardTitle>
+              <CardTitle className="text-lg font-semibold text-gray-900">{t("productInsights")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-gray-700">
-              <p>
-                This product belongs to the{" "}
-                <span className="font-medium text-emerald-700">{product.category}</span>{" "}
-                category and has a NOVA Group rating of{" "}
-                <span className="font-semibold">{product.nova_group}</span>, which indicates
-                its level of food processing.
-              </p>
-              <p>
-                It provides around <span className="font-semibold">{product.calories}</span> kcal
-                per 100g and contains a balanced mix of macronutrients.
-              </p>
-              <p>
-                Water content of <span className="font-semibold">{product.water} g</span> indicates
-                freshness and lighter energy density.
-              </p>
-            </CardContent>
+  {/* Paragraph 1 */}
+  <p>
+    {t("productDescription1_part1")}{" "}
+    <span className="font-medium text-emerald-700">
+      {product.category}
+    </span>{" "}
+    {t("productDescription1_part2")}{" "}
+    <span className="font-semibold">{product.nova_group}</span>.
+  </p>
+
+  {/* Paragraph 2 */}
+  <p>
+    {t("productDescription2_part1")}{" "}
+    <span className="font-semibold">{product.calories}</span>{" "}
+    {t("productDescription2_part2")}{" "}
+    {t("balancedMacros")}
+  </p>
+
+  {/* Paragraph 3 (water version for this page) */}
+  <p>
+    {t("productDescriptionWater_part1")}{" "}
+    <span className="font-semibold">{product.water} g</span>{" "}
+    {t("productDescriptionWater_part2")}
+  </p>
+</CardContent>
           </Card>
 
           {/* Disclaimer */}
           <Alert className="border-l-4 border-emerald-600 bg-emerald-50 shadow-md mt-6">
             <AlertCircle className="w-5 h-5 text-emerald-700" />
             <AlertDescription className="text-gray-800 ml-2">
-              These nutrition facts are approximate and based on standard database
-              values per 100 grams. Always check packaging for updated nutrition and allergen info.
+              {t("nutritionFactsDisclaimer")}
             </AlertDescription>
           </Alert>
         </div>

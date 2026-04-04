@@ -7,19 +7,27 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import NovaBadge from '../components/NovaBadge';
 import NutritionBadge from '../components/NutritionBadge';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 const CategoryPage = () => {
   const { categoryName } = useParams(); // get category name from URL
   const navigate = useNavigate();
+    const { t } = useTranslation();
   const [products, setProducts] = useState([]);
   const [sortBy, setSortBy] = useState('popular');
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:5000/api/products/category/${encodeURIComponent(categoryName)}`);
+        const lang = i18n.language.split("-")[0];
+
+const res = await fetch(
+  `http://127.0.0.1:5000/api/products/category/${encodeURIComponent(categoryName)}?lang=${lang}`
+);
         const data = await res.json();
         setProducts(data);
       } catch (err) {
@@ -30,12 +38,13 @@ const CategoryPage = () => {
       }
     };
 
+
     // exclude unwanted categories
     if (categoryName !== "Not included in a food category" && categoryName !== "Formula") {
       fetchProducts();
     } else {
       setProducts([]);
-      setLoading(false);
+      setLoading(false);n
     }
   }, [categoryName]);
 
@@ -56,6 +65,29 @@ const CategoryPage = () => {
         return 0;
     }
   });
+  useEffect(() => {
+  const fetchCategories = async () => {
+    try {
+      const lang = i18n.language.split("-")[0];
+
+      const res = await fetch(
+        `http://127.0.0.1:5000/api/products/categories?lang=${lang}`
+      );
+
+      const data = await res.json();
+      setCategories(data);
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
+  fetchCategories();
+}, [i18n.language]);
+const selectedCategory = categories.find(
+  (c) => c.name_en === categoryName
+);
+
+const displayCategoryName = selectedCategory?.name || categoryName;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50">
@@ -67,7 +99,7 @@ const CategoryPage = () => {
             className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 transition-colors mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Dashboard</span>
+            <span className="font-medium">{t('backToDashboard')}</span>
           </button>
 
           <div className="flex items-center justify-between">
@@ -77,8 +109,8 @@ const CategoryPage = () => {
                 {categoryName.charAt(0)}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{categoryName}</h1>
-                <p className="text-gray-600">{products.length} products available</p>
+                <h1 className="text-3xl font-bold text-gray-900">{displayCategoryName}</h1>
+                <p className="text-gray-600">{products.length} {t('productsAvailable')}</p>
               </div>
             </div>
 
@@ -86,17 +118,17 @@ const CategoryPage = () => {
             <div className="hidden md:flex items-center gap-2">
               <SlidersHorizontal className="w-5 h-5 text-gray-600" />
               <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-              >
-                <option value="popular">Most Popular</option>
-                <option value="nova-best">NOVA Score: Best First</option>
-                <option value="nova-worst">NOVA Score: Worst First</option>
-                <option value="calories-low">Calories: Low to High</option>
-                <option value="calories-high">Calories: High to Low</option>
-                <option value="protein-high">Protein: High to Low</option>
-              </select>
+  value={sortBy}
+  onChange={(e) => setSortBy(e.target.value)}
+  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+>
+  <option value="popular">{t("filters.popular")}</option>
+  <option value="nova-best">{t("filters.novaBest")}</option>
+  <option value="nova-worst">{t("filters.novaWorst")}</option>
+  <option value="calories-low">{t("filters.calLow")}</option>
+  <option value="calories-high">{t("filters.calHigh")}</option>
+  <option value="protein-high">{t("filters.proteinHigh")}</option>
+</select>
             </div>
           </div>
         </div>
@@ -126,7 +158,7 @@ const CategoryPage = () => {
           </h3>
           {product.category && (
             <p className="text-xs text-gray-500 line-clamp-2">
-              {product.category.split(',').slice(1).join(', ')}
+              {product.desc}
             </p>
           )}
         </div>

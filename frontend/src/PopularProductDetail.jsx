@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import NovaBadge from "../src/components/NovaBadge";
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 // 🖼️ Hardcoded images for known popular products
 const PRODUCT_IMAGES = {
@@ -17,7 +19,6 @@ const PRODUCT_IMAGES = {
       "Kurkure": "https://tse3.mm.bing.net/th/id/OIP.c0WiMC0DEy7PUjku8-BZoAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
       "Lays": "https://m.media-amazon.com/images/I/71kOsITKSkL.jpg",
       "Oreo": "https://th.bing.com/th/id/R.4870bcda87407c7b3eea0bf599809f86?rik=rSFG%2bJJgP4MVpw&riu=http%3a%2f%2fimages5.fanpop.com%2fimage%2fphotos%2f31900000%2fOreo-oreo-31905998-2000-1317.jpg&ehk=UJuj4Krp91jPCFOVSHOAAsQCg0NnGNJWU1eFpJIzL50%3d&risl=&pid=ImgRaw&r=0",
-      "Sunflower Oil": "https://tse1.mm.bing.net/th/id/OIP.ex03LxcKKqW0juoLsiUyrAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
       "Walnuts": "https://th.bing.com/th/id/R.ff3456d6fe93659b2762447ba0ca6dc9?rik=ogOmV03YhpG0Bg&riu=http%3a%2f%2fs3-us-west-2.amazonaws.com%2fdrann%2fwp-content%2fuploads%2f2017%2f09%2f26200539%2fwalnuts-on-wooden-table.jpeg&ehk=s%2fRRTT%2bQOVe6DuGrh1NFXd%2faFTk%2bPkwd4oXAUZR9Qig%3d&risl=1&pid=ImgRaw&r=0",
       "Aashirvaad Whole Wheat Atta": "https://tse3.mm.bing.net/th/id/OIP.Ym1fEI1UN53t_mMmWEdm3QHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
       "India Gate Brown Rice": "https://kiasumart.com/wp-content/uploads/2020/08/INDIA-GATE-BROWN-BASMATHI-RICE-5KG-F.jpg",
@@ -44,28 +45,33 @@ const PopularProductDetail = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedNutrient, setSelectedNutrient] = useState(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const res = await fetch(
-          `http://localhost:5000/api/products/extra/${encodeURIComponent(name)}`
-        );
-        const data = await res.json();
-        setProduct(data);
-      } catch (error) {
-        console.error("Error fetching product:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProduct();
-  }, [name]);
+  const fetchProduct = async () => {
+    try {
+      const lang = i18n.language.split("-")[0];   // ✅ ADD THIS
+
+      const res = await fetch(
+        `http://localhost:5000/api/products/extra/${encodeURIComponent(name)}?lang=${lang}`  // ✅ ADD ?lang
+      );
+
+      const data = await res.json();
+      setProduct(data);
+    } catch (error) {
+      console.error("Error fetching product:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProduct();
+}, [name, i18n.language]);   // ✅ ALSO ADD i18n.language
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600">
-        <Loader2 className="animate-spin w-6 h-6 mr-2" /> Loading product details...
+        <Loader2 className="animate-spin w-6 h-6 mr-2" /> {t("loadingProduct")}
       </div>
     );
   }
@@ -73,27 +79,27 @@ const PopularProductDetail = () => {
   if (!product || product.error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Product Not Found</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">{t("productNotFound")}</h2>
         <button
           onClick={() => navigate(-1)}
           className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
         >
-          Go Back
+         {t("back")}
         </button>
       </div>
     );
   }
 
   // 🧠 Determine image based on product name
-  const imageUrl = PRODUCT_IMAGES[product.name] || PRODUCT_IMAGES.default;
+const imageUrl = PRODUCT_IMAGES[product.name_en] || PRODUCT_IMAGES.default;
 
   const nutrients = [
-    { key: "calories", label: "Calories", value: product.calories, unit: "kcal" },
-    { key: "protein", label: "Protein", value: product.protein, unit: "g" },
-    { key: "carbs", label: "Carbs", value: product.carbs, unit: "g" },
-    { key: "fat", label: "Fat", value: product.fat, unit: "g" },
-    { key: "fiber", label: "Fiber", value: product.fiber, unit: "g" }
-  ];
+  { key: "calories", label: t("calories"), value: product.calories, unit: "kcal" },
+  { key: "protein", label: t("protein"), value: product.protein, unit: "g" },
+  { key: "carbs", label: t("carbs"), value: product.carbs, unit: "g" },
+  { key: "fat", label: t("fat"), value: product.fat, unit: "g" },
+  { key: "fiber", label: t("fiber"), value: product.fiber, unit: "g" }
+];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50 pb-16">
@@ -105,11 +111,11 @@ const PopularProductDetail = () => {
             className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 transition"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back</span>
+            <span className="font-medium">{t("back")}</span>
           </button>
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-emerald-600" />
-            <span className="font-bold text-emerald-600 text-lg">Popular Product</span>
+            <span className="font-bold text-emerald-600 text-lg">{t("popularProduct")}</span>
           </div>
         </div>
       </div>
@@ -132,7 +138,7 @@ const PopularProductDetail = () => {
           {/* Name & Category */}
           <div className="space-y-2">
             <h1 className="text-4xl font-extrabold text-gray-900">{product.name}</h1>
-            <p className="text-lg text-gray-600">{product.category}</p>
+            <p className="text-lg text-gray-600">{product.desc}</p>
           </div>
 
           {/* NOVA Group */}
@@ -140,7 +146,7 @@ const PopularProductDetail = () => {
             <div className="flex items-center gap-4">
               <NovaBadge novaGroup={product.nova_group} size="lg" />
               <Badge className="bg-emerald-100 text-emerald-800 font-medium py-2 px-4 rounded-lg">
-                Processed Level: {product.nova_group}
+               {t("processedLevel")}: {product.nova_group}
               </Badge>
             </div>
           )}
@@ -149,7 +155,7 @@ const PopularProductDetail = () => {
           <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 border-0 shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900">
-                Nutritional Information (per 100g)
+                {t("nutritionalInfo")} ({t("per100g")})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -174,7 +180,7 @@ const PopularProductDetail = () => {
               {selectedNutrient && (
                 <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-600 rounded-lg shadow">
                   <p className="text-gray-800 font-medium">
-                    {NUTRIENT_INSIGHTS[selectedNutrient]}
+                    {t(`nutrientInsights.${selectedNutrient}`)}
                   </p>
                 </div>
               )}
@@ -185,38 +191,45 @@ const PopularProductDetail = () => {
           <Card className="bg-white shadow-lg rounded-xl border-0 w-full">
             <CardHeader>
               <CardTitle className="text-lg font-semibold text-gray-900">
-                Product Insights
+                {t("productInsights")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-gray-700">
-              <p>
-                This popular product belongs to the{" "}
-                <span className="font-medium text-emerald-700">
-                  {product.category}
-                </span>{" "}
-                category and has a NOVA Group rating of{" "}
-                <span className="font-semibold">{product.nova_group}</span>.
-              </p>
-              <p>
-                It provides around{" "}
-                <span className="font-semibold">{product.calories}</span> kcal per
-                100g, making it a good source of energy with{" "}
-                {product.protein ? `${product.protein}g protein` : "balanced macros"}.
-              </p>
-              <p>
-                Fiber content of{" "}
-                <span className="font-semibold">{product.fiber}g</span> supports
-                digestion and overall health.
-              </p>
-            </CardContent>
+  {/* Paragraph 1 */}
+  <p>
+    
+    {t("productDescription1_part1")}{" "}
+    <span className="font-medium text-emerald-700">
+      {product.category}
+    </span>{" "}
+    {t("productDescription1_part2")}{" "}
+    <span className="font-semibold">{product.nova_group}</span>.
+  </p>
+
+  {/* Paragraph 2 */}
+  <p>
+    {t("productDescription2_part1")}{" "}
+    <span className="font-semibold">{product.calories}</span>{" "}
+    {t("productDescription2_part2")}{" "}
+    {product.protein
+      ? `${product.protein}g protein`
+      : t("balancedMacros")}
+  </p>
+
+  {/* Paragraph 3 */}
+  <p>
+    {t("productDescription3_part1")}{" "}
+    <span className="font-semibold">{product.fiber}g</span>{" "}
+    {t("productDescription3_part2")}
+  </p>
+</CardContent>
           </Card>
 
           {/* Disclaimer */}
           <Alert className="border-l-4 border-emerald-600 bg-emerald-50 shadow-md mt-6">
             <AlertCircle className="w-5 h-5 text-emerald-700" />
             <AlertDescription className="text-gray-800 ml-2">
-              Nutrition data shown here are estimates based on database values.
-              Always verify with product packaging for accurate information.
+              {t("disclaimer")}
             </AlertDescription>
           </Alert>
         </div>

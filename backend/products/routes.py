@@ -41,6 +41,7 @@ def get_selected_products(ids, table_name="nutri_data"):
         products.append({
             "id": row["id"],
             "name": name,
+            
             "category": row["WWEIA_CATEGORY_DESCRIPTION"],
             "nova_group": row["NOVA_GROUP"],
             "calories": row["ENERGY_KCAL"],
@@ -58,47 +59,74 @@ def get_selected_products(ids, table_name="nutri_data"):
 @products_bp.route("/products/popular", methods=["GET"])
 def get_popular_products():
     conn = get_db_connection()
+
+    lang = request.args.get("lang", "en")  # 👈 NEW
+
     query = """
-        SELECT PRODUCT_NAME, WWEIA_CATEGORY_DESCRIPTION, ENERGY_KCAL,
-               PROTEIN_G, FIBER_TOTAL_DIETARY_G, NOVA_GROUP
+        SELECT PRODUCT_NAME, PRODUCT_NAME_HI, WWEIA_CATEGORY_DESCRIPTION,
+               ENERGY_KCAL, PROTEIN_G, FIBER_TOTAL_DIETARY_G, NOVA_GROUP
         FROM extra_products
     """
+
     rows = conn.execute(query).fetchall()
     conn.close()
 
-    excluded_items = ["Maggi", "Pepsi 1",]
+    excluded_items = ["Maggi", "Pepsi 1"]
 
     products = []
     for row in rows:
-        name = row["PRODUCT_NAME"].split(',')[0].strip()
+        name_en = row["PRODUCT_NAME"].split(',')[0].strip()
+        name_hi = row["PRODUCT_NAME_HI"]
 
-        # Skip excluded names
-        if any(ex.lower() in name.lower() for ex in excluded_items):
+        # 👇 choose language
+        if lang == "hi" and name_hi:
+            name = name_hi
+        else:
+            name = name_en
+
+        # Skip excluded names (use EN for check)
+        if any(ex.lower() in name_en.lower() for ex in excluded_items):
             continue
 
         products.append({
-            "name": name,
-            "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+            "name": name,  # 👈 translated name
+            "name_en": name_en,
+            "category": row["WWEIA_CATEGORY_DESCRIPTION"],  # (we'll translate later)
             "nova_group": row["NOVA_GROUP"],
             "calories": row["ENERGY_KCAL"],
             "protein": row["PROTEIN_G"],
             "fiber": row["FIBER_TOTAL_DIETARY_G"],
-            "image": get_image(name)
+            "image": get_image(name_en)  # 👈 keep EN for images
         })
 
     return jsonify(products)
-
 
 @products_bp.route("/products/extra/<string:product_name>", methods=["GET"])
 def get_extra_product_detail(product_name):
     conn = get_db_connection()
     query = """
-        SELECT PRODUCT_NAME, WWEIA_CATEGORY_DESCRIPTION, ENERGY_KCAL, CARBOHYDRATE_G,
-               SUGARS_TOTALG, TOTAL_FAT_G, PROTEIN_G, FIBER_TOTAL_DIETARY_G,
-               NOVA_GROUP, SALT_MG, ZINC_MG, TOTAL_VITAMIN_A_MCG, VITAMIN_C_MG,
-               VITAMIN_D_MCG, THIAMIN_MG, RIBOFLAVIN_MG, VITAMIN_B6_MG,
-               VITAMIN_B12_MCG, CHOLESTEROL_100G
-        FROM extra_products
+       SELECT PRODUCT_NAME,
+       PRODUCT_NAME_HI,   -- ✅ ADD THIS
+       WWEIA_CATEGORY_DESCRIPTION,
+       WWEIA_CATEGORY_DESCRIPTION_HI,
+       ENERGY_KCAL,
+       CARBOHYDRATE_G,
+       SUGARS_TOTALG,
+       TOTAL_FAT_G,
+       PROTEIN_G,
+       FIBER_TOTAL_DIETARY_G,
+       NOVA_GROUP,
+       SALT_MG,
+       ZINC_MG,
+       TOTAL_VITAMIN_A_MCG,
+       VITAMIN_C_MG,
+       VITAMIN_D_MCG,
+       THIAMIN_MG,
+       RIBOFLAVIN_MG,
+       VITAMIN_B6_MG,
+       VITAMIN_B12_MCG,
+       CHOLESTEROL_100G
+FROM extra_products
         WHERE PRODUCT_NAME = ?
     """
     row = conn.execute(query, (product_name,)).fetchone()
@@ -106,29 +134,47 @@ def get_extra_product_detail(product_name):
 
     if row is None:
         return jsonify({"error": "Product not found"}), 404
+    lang = request.args.get("lang", "en")
+    name_en = row["PRODUCT_NAME"].split(',')[0].strip()
+    name_hi = row["PRODUCT_NAME_HI"]
 
-    name = row["PRODUCT_NAME"].split(',')[0].strip()
+    if lang == "hi" and name_hi:
+        name = name_hi
+    else:
+        name = name_en
+    lang = request.args.get("lang", "en")
+
+    desc_en = row["WWEIA_CATEGORY_DESCRIPTION"]
+    desc_hi = row["WWEIA_CATEGORY_DESCRIPTION_HI"]
+
+    if lang == "hi" and desc_hi:
+        desc = desc_hi
+    else:
+        desc = desc_en
+    
 
     product = {
-        "name": name,
-        "category": row["WWEIA_CATEGORY_DESCRIPTION"],
-        "nova_group": row["NOVA_GROUP"],
-        "calories": row["ENERGY_KCAL"],
-        "carbs": row["CARBOHYDRATE_G"],
-        "sugar": row["SUGARS_TOTALG"],
-        "fat": row["TOTAL_FAT_G"],
-        "protein": row["PROTEIN_G"],
-        "fiber": row["FIBER_TOTAL_DIETARY_G"],
-        "salt": row["SALT_MG"],
-        "vitamin_a": row["TOTAL_VITAMIN_A_MCG"],
-        "vitamin_c": row["VITAMIN_C_MG"],
-        "vitamin_d": row["VITAMIN_D_MCG"],
-        "vitamin_b6": row["VITAMIN_B6_MG"],
-        "vitamin_b12": row["VITAMIN_B12_MCG"],
-        "zinc": row["ZINC_MG"],
-        "cholesterol": row["CHOLESTEROL_100G"],
-        "image": get_image(name)
-    }
+    "name": name,          # ✅ Hindi or English
+    "name_en": name_en,
+    "desc": desc,          # ✅ for safety
+    "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+    "nova_group": row["NOVA_GROUP"],
+    "calories": row["ENERGY_KCAL"],
+    "carbs": row["CARBOHYDRATE_G"],
+    "sugar": row["SUGARS_TOTALG"],
+    "fat": row["TOTAL_FAT_G"],
+    "protein": row["PROTEIN_G"],
+    "fiber": row["FIBER_TOTAL_DIETARY_G"],
+    "salt": row["SALT_MG"],
+    "vitamin_a": row["TOTAL_VITAMIN_A_MCG"],
+    "vitamin_c": row["VITAMIN_C_MG"],
+    "vitamin_d": row["VITAMIN_D_MCG"],
+    "vitamin_b6": row["VITAMIN_B6_MG"],
+    "vitamin_b12": row["VITAMIN_B12_MCG"],
+    "zinc": row["ZINC_MG"],
+    "cholesterol": row["CHOLESTEROL_100G"],
+    "image": get_image(name_en)
+}
 
     return jsonify(product)
 
@@ -138,10 +184,23 @@ def get_extra_product_detail(product_name):
 def get_product_detail(id):
     conn = get_db_connection()
     query = """
-        SELECT id, FOOD_CODE, MAIN_FOOD_DESCRIPTION, WWEIA_CATEGORY_DESCRIPTION,
-               NOVA_GROUP, ENERGY_KCAL, PROTEIN_G, CARBOHYDRATE_G, SUGARS_TOTALG,
-               FIBER_TOTAL_DIETARY_G, TOTAL_FAT_G, WATERG, FPRO
-        FROM nutri_data
+        SELECT id,
+       FOOD_CODE,
+       MAIN_FOOD_DESCRIPTION,
+       MAIN_FOOD_DESCRIPTION_HI,   -- ✅ ADD THIS
+       MAIN_FOOD_DESC_FULL_HI,
+       WWEIA_CATEGORY_DESCRIPTION,
+       CATEGORY_HI,               -- ✅ ADD THIS
+       NOVA_GROUP,
+       ENERGY_KCAL,
+       PROTEIN_G,
+       CARBOHYDRATE_G,
+       SUGARS_TOTALG,
+       FIBER_TOTAL_DIETARY_G,
+       TOTAL_FAT_G,
+       WATERG,
+       FPRO
+FROM nutri_data
         WHERE id = ?
     """
     row = conn.execute(query, (id,)).fetchone()
@@ -150,13 +209,35 @@ def get_product_detail(id):
     if row is None:
         return jsonify({"error": "Product not found"}), 404
 
-    name = row["MAIN_FOOD_DESCRIPTION"].split(',')[0].strip()
+    lang = request.args.get("lang", "en")
+
+    name_en = row["MAIN_FOOD_DESCRIPTION"]
+    name_hi = row["MAIN_FOOD_DESCRIPTION_HI"]
+
+    clean_name_en = name_en.split(",")[0].strip() if name_en else "Unknown"
+
+    if lang == "hi" and name_hi:
+        name = name_hi
+    else:
+        name = clean_name_en
+    if lang == "hi" and row["CATEGORY_HI"]:
+        category = row["CATEGORY_HI"]
+    else:
+        category = row["WWEIA_CATEGORY_DESCRIPTION"]
+    desc_en = row["MAIN_FOOD_DESCRIPTION"]
+    desc_hi = row["MAIN_FOOD_DESC_FULL_HI"]
+
+    if lang == "hi" and desc_hi:
+        description = desc_hi
+    else:
+        description = desc_en
 
     product = {
         "id": row["id"],
         "food_code": row["FOOD_CODE"],
         "name": name,
-        "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+        "category": category,
+        "desc": description,
         "nova_group": row["NOVA_GROUP"],
         "calories": row["ENERGY_KCAL"],
         "protein": row["PROTEIN_G"],
@@ -166,36 +247,59 @@ def get_product_detail(id):
         "fat": row["TOTAL_FAT_G"],
         "water": row["WATERG"],
         "fpro": row["FPRO"],
-        "image": get_image(name)
+        "image": get_image(name_en)
     }
 
     return jsonify(product)
 
 @products_bp.route("/products/categories", methods=["GET"])
 def get_categories():
+    lang = request.args.get("lang", "en")
+
     conn = get_db_connection()
-    rows = conn.execute("SELECT DISTINCT WWEIA_CATEGORY_DESCRIPTION FROM nutri_data").fetchall()
+    rows = conn.execute("""
+        SELECT DISTINCT WWEIA_CATEGORY_DESCRIPTION, CATEGORY_HI
+        FROM nutri_data
+    """).fetchall()
     conn.close()
 
-    # Convert to list of cleaned category names (before the first comma)
     categories = []
+    seen = set()
+
     for row in rows:
-        cat = row["WWEIA_CATEGORY_DESCRIPTION"]
-        if cat:
-            # take only the part before the comma
-            main_cat = cat.split(",")[0].strip()
-            if main_cat not in categories:
-                categories.append(main_cat)
+        full_cat = row["WWEIA_CATEGORY_DESCRIPTION"]
+        cat_hi = row["CATEGORY_HI"]
+
+        if not full_cat:
+            continue
+
+        main_cat = full_cat.split(",")[0].strip()
+
+        if main_cat in seen:
+            continue
+
+        seen.add(main_cat)
+
+        # 👇 language logic
+        if lang == "hi" and cat_hi:
+            category = cat_hi
+        else:
+            category = main_cat
+
+        categories.append({
+            "name": category,
+            "name_en": main_cat   # 👈 VERY IMPORTANT
+        })
 
     return jsonify(categories)
 
-@products_bp.route("/products/category/<string:category_name>", methods=["GET"])
+@products_bp.route("/products/category/<path:category_name>", methods=["GET"])
 def get_products_by_category(category_name):
     conn = get_db_connection()
 
     # Match all rows whose WWEIA_CATEGORY_DESCRIPTION starts with the category name
     query = """
-        SELECT id, MAIN_FOOD_DESCRIPTION, WWEIA_CATEGORY_DESCRIPTION, NOVA_GROUP,
+        SELECT id, MAIN_FOOD_DESCRIPTION,MAIN_FOOD_DESCRIPTION_HI,MAIN_FOOD_DESC_FULL_HI, WWEIA_CATEGORY_DESCRIPTION,CATEGORY_HI, NOVA_GROUP,
                ENERGY_KCAL, PROTEIN_G, CARBOHYDRATE_G, SUGARS_TOTALG,
                FIBER_TOTAL_DIETARY_G, TOTAL_FAT_G, WATERG
         FROM nutri_data
@@ -203,15 +307,34 @@ def get_products_by_category(category_name):
     """
     rows = conn.execute(query, (f"{category_name}%",)).fetchall()
     conn.close()
-
+    lang = request.args.get("lang", "en")
     products = []
     for row in rows:
-        name = row["MAIN_FOOD_DESCRIPTION"]
-        clean_name = name.split(",")[0] if name else "Unknown"
+        name_en = row["MAIN_FOOD_DESCRIPTION"]
+        name_hi = row["MAIN_FOOD_DESCRIPTION_HI"]
+
+        clean_name_en = name_en.split(",")[0] if name_en else "Unknown"
+
+        if lang == "hi" and name_hi:
+            clean_name = name_hi
+        else:
+            clean_name = clean_name_en
+        if lang == "hi" and row["CATEGORY_HI"]:
+            category = row["CATEGORY_HI"]
+        else:
+            category = row["WWEIA_CATEGORY_DESCRIPTION"]
+        desc_en = row["MAIN_FOOD_DESCRIPTION"]
+        desc_hi = row["MAIN_FOOD_DESC_FULL_HI"]
+
+        if lang == "hi" and desc_hi:
+            description = desc_hi
+        else:
+            description = desc_en
         products.append({
             "id": row["id"],
             "name": clean_name,
-            "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+            "category": category,
+            "desc": description,
             "nova_group": row["NOVA_GROUP"],
             "calories": row["ENERGY_KCAL"],
             "protein": row["PROTEIN_G"],
@@ -224,39 +347,63 @@ def get_products_by_category(category_name):
         })
 
     return jsonify(products)
+from deep_translator import GoogleTranslator
 
 @products_bp.route("/products/search", methods=["GET"])
 def search_products():
     query = request.args.get("q", "").strip()
+    lang = request.args.get("lang", "en")   # 👈 ADD THIS
 
     if not query:
         return jsonify([])
 
+    # 🔥 translate query to English for search
+    try:
+        translated_query = GoogleTranslator(source='auto', target='en').translate(query)
+    except:
+        translated_query = query
+
     conn = get_db_connection()
+
     sql = """
-        SELECT id, FOOD_CODE, MAIN_FOOD_DESCRIPTION, WWEIA_CATEGORY_DESCRIPTION,
-               ENERGY_KCAL, PROTEIN_G, CARBOHYDRATE_G, NOVA_GROUP, TOTAL_FAT_G
+        SELECT id, MAIN_FOOD_DESCRIPTION, MAIN_FOOD_DESCRIPTION_HI,
+               WWEIA_CATEGORY_DESCRIPTION, CATEGORY_HI, MAIN_FOOD_DESC_FULL_HI,
+               ENERGY_KCAL, PROTEIN_G, NOVA_GROUP
         FROM nutri_data
         WHERE MAIN_FOOD_DESCRIPTION LIKE ?
+           OR MAIN_FOOD_DESCRIPTION_HI LIKE ?
            OR WWEIA_CATEGORY_DESCRIPTION LIKE ?
         LIMIT 20
     """
-    rows = conn.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+
+    rows = conn.execute(
+        sql,
+        (f"%{translated_query}%", f"%{query}%", f"%{translated_query}%")
+    ).fetchall()
+
     conn.close()
 
-    results = [
-        {
+    results = []
+
+    for row in rows:
+        name_en = row["MAIN_FOOD_DESCRIPTION"]
+        name_hi = row["MAIN_FOOD_DESCRIPTION_HI"]
+
+        clean_en = name_en.split(",")[0].strip() if name_en else "Unknown"
+
+        # ✅ RETURN BASED ON LANGUAGE
+        if lang == "hi" and name_hi:
+            name = name_hi
+        else:
+            name = clean_en
+
+        results.append({
             "id": row["id"],
-            "name": row["MAIN_FOOD_DESCRIPTION"].split(",")[0].strip(),
-            "category": row["WWEIA_CATEGORY_DESCRIPTION"],
+            "name": name,  # 👈 Hindi or English
+            "category": row["CATEGORY_HI"] if lang == "hi" else row["WWEIA_CATEGORY_DESCRIPTION"],
+            "nova_group": row["NOVA_GROUP"],
             "calories": row["ENERGY_KCAL"],
             "protein": row["PROTEIN_G"],
-            "carbs": row["CARBOHYDRATE_G"],
-            "fat": row["TOTAL_FAT_G"],
-            "nova_group": row["NOVA_GROUP"],
-        }
-        for row in rows
-    ]
+        })
 
     return jsonify(results)
-

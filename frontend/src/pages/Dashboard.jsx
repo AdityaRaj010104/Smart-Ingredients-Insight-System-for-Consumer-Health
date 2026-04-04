@@ -13,6 +13,9 @@ import { useUser } from '../context/UserContext';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
+import { translateWithCache } from "../lib/translateWithCache";
 
 
 const Dashboard = () => {
@@ -25,11 +28,14 @@ const Dashboard = () => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [popularProducts, setPopularProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [translatedCategories, setTranslatedCategories] = useState({});
+  const [translatedProducts, setTranslatedProducts] = useState({});
 
   const [uploading, setUploading] = useState(false);
   const [predictionResult, setPredictionResult] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [manualMode, setManualMode] = useState(false);
+  const { t } = useTranslation();
 
 
 
@@ -65,7 +71,11 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:5000/api/products/categories');
+        const lang = i18n.language.split("-")[0];
+
+const res = await fetch(
+  `http://127.0.0.1:5000/api/products/categories?lang=${lang}`
+);
         const data = await res.json();
         setCategories(data);
       } catch (err) {
@@ -73,15 +83,17 @@ const Dashboard = () => {
       }
     };
     fetchCategories();
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     if (searchQuery.trim().length > 0) {
       const fetchResults = async () => {
         try {
-          const res = await fetch(
-            `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}`
-          );
+          const lang = i18n.language.split("-")[0];
+
+const res = await fetch(
+  `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}&lang=${lang}`
+);
           const data = await res.json();
           setSearchResults(data.slice(0, 15)); // top 5 suggestions
           setShowSuggestions(true);
@@ -127,8 +139,12 @@ const Dashboard = () => {
   // handleProductClick now uses name for popular products (extra_products)
   const handlePopularProductClick = (product) => {
     // If the product came from extra_products (popular ones), open new page
-    if (product.name) {
-      navigate(`/popular/${encodeURIComponent(product.name)}`);
+    
+  const routeName = product.name_en || product.name; // ✅ use English
+
+
+    if (routeName) {
+      navigate(`/popular/${encodeURIComponent(routeName)}`);
     } else {
       // fallback for old dataset (with id)
       navigate(`/product/${product.id}`);
@@ -184,7 +200,7 @@ const Dashboard = () => {
       .replace(/\b\w/g, (c) => c.toUpperCase()); // capitalize first letter of each word
   };
 
-  const getPlaceholderImage = (category) => {
+  const getPlaceholderImage = (name) => {
     const categoryImages = {
       "Bourbon Creams": "https://www.bigbasket.com/media/uploads/p/xl/100012354_30-britannia-bourbon-chocolate-cream-biscuits.jpg",
       "Bournville Dark Chocolate bar": "https://tse4.mm.bing.net/th/id/OIP.jl5HHko54qJfRYT7u36ABAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
@@ -206,7 +222,7 @@ const Dashboard = () => {
 
     // return a category-specific image or a general fallback
     return (
-      categoryImages[category] ||
+      categoryImages[name] ||
       "https://images.unsplash.com/photo-1546069901-ba9599a7e63c" // general food placeholder
     );
   };
@@ -215,7 +231,9 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchPopular = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:5000/api/products/popular');
+        const lang = i18n.language;
+
+        const res = await fetch(`http://127.0.0.1:5000/api/products/popular?lang=${lang}`);
         const data = await res.json();
         setPopularProducts(data);
       } catch (error) {
@@ -230,9 +248,137 @@ const Dashboard = () => {
     : popularProducts;
 
   const filteredCategories = categories
-    .filter(cat => cat !== "Not included in a food category" && cat !== "Formula" && cat !== "Human milk")
+    .filter(cat =>
+  cat.name_en !== "Not included in a food category" &&
+  cat.name_en !== "Formula" &&
+  cat.name_en !== "Human milk"
+)
     .slice(0, 20); // limit to 20
 
+//   useEffect(() => {
+//   const translateCategories = async () => {
+//     const lang = i18n.language.split("-")[0];
+
+//     console.log("Lang:", lang);
+
+//     // ✅ reset for english
+//     if (lang === "en") {
+//       setTranslatedCategories({});
+//       return;
+//     }
+
+//     if (!filteredCategories.length) return;
+
+//     let updated = {};
+
+//     const LIMIT = 20; // 👈 only translate first 8
+
+// for (let i = 0; i < Math.min(filteredCategories.length, LIMIT); i++) {
+//   const cat = filteredCategories[i];
+
+//   if (translatedCategories[cat]) {
+//     updated[cat] = translatedCategories[cat];
+//     continue;
+//   }
+
+//   const translated = await translateWithCache(cat, lang);
+//   updated[cat] = translated || cat;
+// }
+
+//     setTranslatedCategories(prev => ({ ...prev, ...updated }));
+//   };
+
+//   translateCategories();
+// }, [filteredCategories, i18n.language]);
+
+// useEffect(() => {
+//   const translateProducts = async () => {
+//     const lang = i18n.language.split("-")[0];
+
+//     // reset for English
+//     if (lang === "en") {
+//       setTranslatedProducts({});
+//       return;
+//     }
+
+//     if (!popularProducts.length) return;
+
+//     let updated = {};
+
+//     const LIMIT = 16; // 👈 limit for performance
+
+//     for (let i = 0; i < Math.min(popularProducts.length, LIMIT); i++) {
+//       const product = popularProducts[i];
+
+//       if (translatedProducts[product.name]) {
+//         updated[product.name] = translatedProducts[product.name];
+//         continue;
+//       }
+
+//       const translated = await translateWithCache(product.name, lang);
+//       updated[product.name] = translated || product.name;
+//     }
+
+//     setTranslatedProducts(prev => ({ ...prev, ...updated }));
+//   };
+
+//   translateProducts();
+// // }, [popularProducts, i18n.language]);
+
+// const translateAllContent = async () => {
+//   const lang = i18n.language.split("-")[0];
+
+//   if (lang === "en") {
+//     setTranslatedCategories({});
+//     setTranslatedProducts({});
+//     return;
+//   }
+
+//   // ✅ check cache first
+//   const cached = localStorage.getItem(`translations_${lang}`);
+//   if (cached) {
+//     const parsed = JSON.parse(cached);
+//     setTranslatedCategories(parsed);
+//     setTranslatedProducts(parsed);
+//     return;
+//   }
+
+//   try {
+//     // 🔥 collect all text
+//     const categoryTexts = filteredCategories.slice(0, 20);
+//     const productTexts = popularProducts.slice(0, 20).map(p => p.name);
+
+//     const allTexts = [...new Set([...categoryTexts, ...productTexts])];
+
+//     const res = await fetch("http://127.0.0.1:5000/translate-batch", {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json"
+//       },
+//       body: JSON.stringify({
+//         texts: allTexts,
+//         target: lang
+//       })
+//     });
+
+//     const data = await res.json();
+
+//     // ✅ store in cache
+//     localStorage.setItem(`translations_${lang}`, JSON.stringify(data));
+
+//     setTranslatedCategories(data);
+//     setTranslatedProducts(data);
+
+//   } catch (err) {
+//     console.error("Batch translation failed:", err);
+//   }
+// };
+
+// useEffect(() => {
+//   if (!filteredCategories.length || !popularProducts.length) return;
+
+//   translateAllContent();
+// }, [filteredCategories, popularProducts, i18n.language]);
   return (
     <div className="min-h-screen bg-linear-to-b from-emerald-50 via-white to-blue-50">
       {/* Navbar */}
@@ -256,14 +402,14 @@ const Dashboard = () => {
                   className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors"
                 >
                   <Home className="w-5 h-5" />
-                  Home
+                  {t("home")}
                 </button>
                 <button
                   onClick={() => navigate('/categories')}
                   className="flex items-center gap-2 text-gray-700 hover:text-emerald-600 font-medium transition-colors"
                 >
                   <Grid3x3 className="w-5 h-5" />
-                  Categories
+                  {t("categories")}
                 </button>
               </div>
             </div>
@@ -273,7 +419,7 @@ const Dashboard = () => {
                 <>
                   <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
                     <Sparkles className="w-4 h-4 text-emerald-600" />
-                    <span>Hi, {user.name || 'User'}!</span>
+                    <span>{t("hi")}, {user.name || 'User'}!</span>
                   </div>
                   <Button
                     onClick={async () => {
@@ -290,8 +436,23 @@ const Dashboard = () => {
                     }}
                     className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-all"
                   >
-                    Logout
+                    {t("logout")}
                   </Button>
+                <Button
+  onClick={() => {
+    const currentLang = i18n.language.split("-")[0];
+    console.log("Current lang:", currentLang);
+
+    const newLang = currentLang === "en" ? "hi" : "en";
+    console.log("Switching to:", newLang);
+
+    i18n.changeLanguage(newLang);
+    localStorage.setItem("lang", newLang);
+  }}
+  className="px-3 py-1 bg-gray-200 rounded-lg text-sm"
+>
+  🌐
+</Button>
                 </>
               ) : (
                 <button
@@ -323,7 +484,7 @@ const Dashboard = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
-                placeholder="Search for products, brands, categories..."
+                placeholder={t("search")}
                 className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
               />
 
@@ -565,12 +726,12 @@ const Dashboard = () => {
       {/* Top Categories */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Top Categories</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{t("topCategories")}</h2>
           <button
             onClick={() => setSelectedCategory(null)}
             className="text-emerald-600 hover:text-emerald-700 font-medium text-sm"
           >
-            View All
+            {t("viewAll")}
           </button>
         </div>
 
@@ -578,7 +739,7 @@ const Dashboard = () => {
           {filteredCategories.slice(0, 18).map((category, index) => (
             <button
               key={index}
-              onClick={() => handleCategoryClick(category)}
+              onClick={() => handleCategoryClick(category.name_en)}
               className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 ${selectedCategory === category
                 ? 'border-emerald-600 bg-emerald-50'
                 : 'border-gray-200 bg-white hover:border-emerald-300'
@@ -588,9 +749,9 @@ const Dashboard = () => {
                 className={`w-12 h-12 flex items-center justify-center rounded-full text-lg font-bold mb-2 ${categoryColors[index % categoryColors.length]
                   }`}
               >
-                {category.charAt(0)}
+                {category.name.charAt(0)}
               </div>
-              <p className="text-sm font-medium text-gray-900 text-center">{category}</p>
+              <p className="text-sm font-medium text-gray-900 text-center">{category.name}</p>
             </button>
           ))}
 
@@ -601,7 +762,7 @@ const Dashboard = () => {
       {/* Products Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          {selectedCategory ? 'Category Products' : 'Popular Products'}
+          {selectedCategory ? t("categoryProducts") : t("popularProducts")}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -614,10 +775,10 @@ const Dashboard = () => {
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={
+                  
 
-                    getPlaceholderImage(product.name)
-                  }
+                    src={ getPlaceholderImage(product.name_en || product.name) }
+                  
                   alt={product.name}
                   className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-300"
                 />
