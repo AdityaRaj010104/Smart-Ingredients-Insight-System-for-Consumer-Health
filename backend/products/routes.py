@@ -5,7 +5,7 @@ products_bp = Blueprint('products', __name__)
 
 # Hardcoded image URLs
 image_map = {
-    "Milk": "https://www.usdairy.com/getmedia/8a6aa790-98df-4a2d-af83-c7117392fc2f/100316whatismilk_400.jpg.jpg.aspx",
+    "Milk": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Bottle_of_milk.jpg/640px-Bottle_of_milk.jpg",
     "Pudding": "https://tse4.mm.bing.net/th/id/OIP.XqQqJfH-fFYS3wvns8QiiAHaE8?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
     "Cheese": "https://static.vecteezy.com/system/resources/previews/028/643/036/non_2x/wooden-board-with-different-kinds-of-delicious-cheese-on-table-photo.jpg",
     "Frankfurter or hot dog": "https://th.bing.com/th/id/OIP.6ATPnpPoTT-Ut92UWaSqbgHaE8?o=7&cb=ucfimg2rm=3&ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
@@ -17,7 +17,7 @@ def get_image(name):
     for key, url in image_map.items():
         if key.lower() in name.lower():
             return url
-    return "https://example.com/default.jpg"
+    return "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=640&q=80"
 
 
 # Function to get selected products
@@ -352,34 +352,104 @@ from deep_translator import GoogleTranslator
 @products_bp.route("/products/search", methods=["GET"])
 def search_products():
     query = request.args.get("q", "").strip()
-    lang = request.args.get("lang", "en")   # 👈 ADD THIS
+    lang = request.args.get("lang", "en")
+
+    def parse_float(value):
+        if value is None or value == "":
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    min_protein = parse_float(request.args.get("minProtein"))
+    max_protein = parse_float(request.args.get("maxProtein"))
+    min_fat = parse_float(request.args.get("minFat"))
+    max_fat = parse_float(request.args.get("maxFat"))
+    min_sugar = parse_float(request.args.get("minSugar"))
+    max_sugar = parse_float(request.args.get("maxSugar"))
+
+    nova_raw = request.args.get("nova", "")
+    nova_groups = []
+    if nova_raw:
+        for item in nova_raw.split(","):
+            item = item.strip()
+            if item.isdigit() and int(item) in (1, 2, 3, 4):
+                nova_groups.append(int(item))
+
+    limit = request.args.get("limit", "200")
+    try:
+        limit = max(1, min(int(limit), 500))
+    except ValueError:
+        limit = 200
 
     if not query:
         return jsonify([])
 
-    # 🔥 translate query to English for search
+    # Translate to English for robust matching against MAIN_FOOD_DESCRIPTION.
     try:
         translated_query = GoogleTranslator(source='auto', target='en').translate(query)
-    except:
+    except Exception:
         translated_query = query
 
     conn = get_db_connection()
 
-    sql = """
-        SELECT id, MAIN_FOOD_DESCRIPTION, MAIN_FOOD_DESCRIPTION_HI,
-               WWEIA_CATEGORY_DESCRIPTION, CATEGORY_HI, MAIN_FOOD_DESC_FULL_HI,
-               ENERGY_KCAL, PROTEIN_G, NOVA_GROUP
-        FROM nutri_data
-        WHERE MAIN_FOOD_DESCRIPTION LIKE ?
-           OR MAIN_FOOD_DESCRIPTION_HI LIKE ?
-           OR WWEIA_CATEGORY_DESCRIPTION LIKE ?
-        LIMIT 20
-    """
+    conditions = [
+        "(MAIN_FOOD_DESCRIPTION LIKE ? OR MAIN_FOOD_DESCRIPTION_HI LIKE ? OR WWEIA_CATEGORY_DESCRIPTION LIKE ? OR CATEGORY_HI LIKE ?)"
+    ]
+    params = [
+        f"%{translated_query}%",
+        f"%{query}%",
+        f"%{translated_query}%",
+        f"%{query}%"
+    ]
 
-    rows = conn.execute(
-        sql,
-        (f"%{translated_query}%", f"%{query}%", f"%{translated_query}%")
-    ).fetchall()
+    if min_protein is not None:
+        conditions.append("COALESCE(PROTEIN_G, 0) >= ?")
+        params.append(min_protein)
+    if max_protein is not None:
+        conditions.append("COALESCE(PROTEIN_G, 0) <= ?")
+        params.append(max_protein)
+
+    if min_fat is not None:
+        conditions.append("COALESCE(TOTAL_FAT_G, 0) >= ?")
+        params.append(min_fat)
+    if max_fat is not None:
+        conditions.append("COALESCE(TOTAL_FAT_G, 0) <= ?")
+        params.append(max_fat)
+
+    if min_sugar is not None:
+        conditions.append("COALESCE(SUGARS_TOTALG, 0) >= ?")
+        params.append(min_sugar)
+    if max_sugar is not None:
+        conditions.append("COALESCE(SUGARS_TOTALG, 0) <= ?")
+        params.append(max_sugar)
+
+    if nova_groups:
+        placeholders = ", ".join(["?"] * len(nova_groups))
+        conditions.append(f"COALESCE(NOVA_GROUP, 0) IN ({placeholders})")
+        params.extend(nova_groups)
+
+    sql = f"""
+        SELECT id,
+               MAIN_FOOD_DESCRIPTION,
+               MAIN_FOOD_DESCRIPTION_HI,
+               WWEIA_CATEGORY_DESCRIPTION,
+               CATEGORY_HI,
+               MAIN_FOOD_DESC_FULL_HI,
+               ENERGY_KCAL,
+               PROTEIN_G,
+               TOTAL_FAT_G,
+               SUGARS_TOTALG,
+               NOVA_GROUP
+        FROM nutri_data
+        WHERE {' AND '.join(conditions)}
+        ORDER BY PROTEIN_G DESC
+        LIMIT ?
+    """
+    params.append(limit)
+
+    rows = conn.execute(sql, params).fetchall()
 
     conn.close()
 
@@ -399,11 +469,14 @@ def search_products():
 
         results.append({
             "id": row["id"],
-            "name": name,  # 👈 Hindi or English
+            "name": name,
             "category": row["CATEGORY_HI"] if lang == "hi" else row["WWEIA_CATEGORY_DESCRIPTION"],
             "nova_group": row["NOVA_GROUP"],
             "calories": row["ENERGY_KCAL"],
             "protein": row["PROTEIN_G"],
+            "fat": row["TOTAL_FAT_G"],
+            "sugar": row["SUGARS_TOTALG"],
+            "image": get_image(clean_en),
         })
 
     return jsonify(results)
