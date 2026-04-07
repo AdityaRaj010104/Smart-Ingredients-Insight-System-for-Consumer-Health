@@ -128,7 +128,8 @@ const Dashboard = () => {
     setRecentSearches(updated);
     localStorage.setItem("recent_searches", JSON.stringify(updated));
 
-    //navigate(`/search?q=${encodeURIComponent(query)}`);
+    setShowSuggestions(false);
+    navigate(`/search?q=${encodeURIComponent(query.trim())}`);
   };
 
 
@@ -482,7 +483,12 @@ const Dashboard = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearch(searchQuery);
+                  }
+                }}
                 placeholder={t("search")}
                 className="pl-12 pr-10 h-14 text-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 shadow-lg"
               />
