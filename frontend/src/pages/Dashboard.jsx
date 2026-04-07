@@ -34,6 +34,11 @@ const Dashboard = () => {
   const [predictionResult, setPredictionResult] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [manualMode, setManualMode] = useState(false);
+  // Recommendation state
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationMessage, setRecommendationMessage] = useState('');
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [ingredientsText, setIngredientsText] = useState('');
   const { t } = useTranslation();
 
 
@@ -164,6 +169,8 @@ const Dashboard = () => {
     setSelectedFile(file);
     setUploading(true);
     setPredictionResult(null);
+    setRecommendations([]);
+    setRecommendationMessage('');
 
     const formData = new FormData();
     formData.append("file", file);
@@ -174,15 +181,62 @@ const Dashboard = () => {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
+      // Read JSON first so we can surface the server's error message
       const data = await res.json();
+
+      if (!res.ok) {
+        const serverMsg = data?.detail || data?.error || "Failed to process image.";
+        throw new Error(serverMsg);
+      }
+
       setPredictionResult(data);
+
+      // Build a meaningful ingredient-like text for the TF-IDF recommender.
+      // We use nutrient names + values (e.g. "energy 250 protein 12 fat 8 sugar 5")
+      // which gives far better cosine-similarity results than bare column keys.
+      const features = data.extracted_features || {};
+      const ingredientText = Object.entries(features)
+        .filter(([, v]) => v && v !== 0)
+        .map(([k, v]) => `${k.toLowerCase().replace(/_g$|_mg$|_mcg$|_kcal$/i, '').replace(/_/g, ' ')} ${v}`)
+        .join(' ');
+
+      fetchRecommendations(ingredientText || file.name, data.nova_class);
+
     } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to process image. Please try again.");
+      console.error("Upload error:", err);
+      alert(`❌ ${err.message}`);
     } finally {
       setUploading(false);
+    }
+  };
+
+
+  // ── Recommendation helper ──────────────────────────────────────────────────
+  const fetchRecommendations = async (ingredients, nova) => {
+    if (!ingredients) return;
+    setLoadingRecommendations(true);
+    setRecommendations([]);
+    setRecommendationMessage('');
+    try {
+      const lang = i18n.language.split('-')[0];
+      const res = await fetch('http://127.0.0.1:5000/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_ingredients: ingredients,
+          user_nova: nova,
+          lang,
+        }),
+      });
+      const data = await res.json();
+      setRecommendations(data.recommendations || []);
+      // Store the server message (e.g. "No better alternative product found.")
+      if (data.message) setRecommendationMessage(data.message);
+    } catch (err) {
+      console.error('Recommendation error:', err);
+      setRecommendationMessage('');
+    } finally {
+      setLoadingRecommendations(false);
     }
   };
 
@@ -203,21 +257,20 @@ const Dashboard = () => {
   const getPlaceholderImage = (name) => {
     const categoryImages = {
       "Bourbon Creams": "https://www.bigbasket.com/media/uploads/p/xl/100012354_30-britannia-bourbon-chocolate-cream-biscuits.jpg",
-      "Bournville Dark Chocolate bar": "https://tse4.mm.bing.net/th/id/OIP.jl5HHko54qJfRYT7u36ABAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Cream Crackers": "https://tse4.mm.bing.net/th/id/OIP.GSouOL8kyzwNUbMLC2sjDwHaFq?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Bournville Dark Chocolate bar": "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?auto=format&fit=crop&w=600&q=80",
+      "Cream Crackers": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80",
       "Ferrero Rocher": "https://www.rakhiz.com/catalog/rakhi/CHOAC001.jpg",
-      "Heinz tomato ketchup": "https://tse4.mm.bing.net/th/id/OIP.Gjxlry6hX2bO0A16PbXh1gHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Kurkure": "https://tse3.mm.bing.net/th/id/OIP.c0WiMC0DEy7PUjku8-BZoAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Heinz tomato ketchup": "https://images.unsplash.com/photo-1528751014936-863e6e7a319c?auto=format&fit=crop&w=600&q=80",
+      "Kurkure": "https://unsplash.com/photos/a-white-bowl-filled-with-walnuts-on-top-of-a-table-IgpWZlCJ-Ms",
       "Lays": "https://m.media-amazon.com/images/I/71kOsITKSkL.jpg",
-      "Oreo": "https://th.bing.com/th/id/R.4870bcda87407c7b3eea0bf599809f86?rik=rSFG%2bJJgP4MVpw&riu=http%3a%2f%2fimages5.fanpop.com%2fimage%2fphotos%2f31900000%2fOreo-oreo-31905998-2000-1317.jpg&ehk=UJuj4Krp91jPCFOVSHOAAsQCg0NnGNJWU1eFpJIzL50%3d&risl=&pid=ImgRaw&r=0",
-      "Sunflower Oil": "https://tse1.mm.bing.net/th/id/OIP.ex03LxcKKqW0juoLsiUyrAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Walnuts": "https://th.bing.com/th/id/R.ff3456d6fe93659b2762447ba0ca6dc9?rik=ogOmV03YhpG0Bg&riu=http%3a%2f%2fs3-us-west-2.amazonaws.com%2fdrann%2fwp-content%2fuploads%2f2017%2f09%2f26200539%2fwalnuts-on-wooden-table.jpeg&ehk=s%2fRRTT%2bQOVe6DuGrh1NFXd%2faFTk%2bPkwd4oXAUZR9Qig%3d&risl=1&pid=ImgRaw&r=0",
-      "Aashirvaad Whole Wheat Atta": "https://tse3.mm.bing.net/th/id/OIP.Ym1fEI1UN53t_mMmWEdm3QHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Oreo": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80",
+      "Sunflower Oil": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+      "Walnuts": "https://images.unsplash.com/photo-1523472721958-9e81d75c9428?auto=format&fit=crop&w=600&q=80",
+      "Aashirvaad Whole Wheat Atta": "https://placehold.co/600x400/f5deb3/333333?text=Whole+Wheat+Atta",
       "India Gate Brown Rice": "https://kiasumart.com/wp-content/uploads/2020/08/INDIA-GATE-BROWN-BASMATHI-RICE-5KG-F.jpg",
       "Tata Sampann Toor Dal": "https://5.imimg.com/data5/ECOM/Default/2023/6/313587974/UK/LB/FI/73577670/tata-sanpann-toor-arhar-dal-30kg-1675247435622-sku-0153-0-1000x1000.jpg",
-      "24 Mantra Organic Brown Rice": "https://th.bing.com/th/id/R.0920ca76c9ffe2470560b1aeb64f34df?rik=ju1HI5U3HrcopQ&riu=http%3a%2f%2fwww.chennaigrocers.com%2fcdn%2fshop%2ffiles%2f24MantraOrganicSonamasuriBrownRice1kg_1.png%3fcrop%3dcenter%26height%3d1200%26v%3d1734690872%26width%3d1200&ehk=ZqtQVclGW1CgdPwtkjMdhPSrR8Rk9qkCmzoR3i34kMk%3d&risl=&pid=ImgRaw&r=0",
+      "24 Mantra Organic Brown Rice": "https://placehold.co/600x400/d4a373/ffffff?text=Organic+Brown+Rice",
       "Fortune Soya Chunks": "https://www.fortunefoods.com/wp-content/uploads/2022/12/Soya-Chunks-44g.png",
-
     };
 
     // return a category-specific image or a general fallback
@@ -582,21 +635,33 @@ const Dashboard = () => {
               onSubmit={async (e) => {
                 e.preventDefault();
                 setUploading(true);
+                setRecommendations([]);
                 const formData = Object.fromEntries(new FormData(e.target).entries());
+                // Extract ingredients before removing from numeric payload
+                const enteredIngredients = ingredientsText.trim() ||
+                  Object.keys(formData)
+                    .filter(k => !k.startsWith('_'))
+                    .map(k => k.toLowerCase().replace(/_/g, ' '))
+                    .join(', ');
+
+                const numericPayload = Object.fromEntries(
+                  Object.entries(formData)
+                    .filter(([k]) => !k.startsWith('_'))
+                    .map(([k, v]) => [k, parseFloat(v) || 0])
+                );
 
                 try {
                   const res = await fetch("http://127.0.0.1:8000/predict", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(
-                      Object.fromEntries(
-                        Object.entries(formData).map(([k, v]) => [k, parseFloat(v) || 0])
-                      )
-                    ),
+                    body: JSON.stringify(numericPayload),
                   });
                   if (!res.ok) throw new Error("Prediction failed");
                   const data = await res.json();
                   setPredictionResult(data);
+
+                  // Trigger recommendation in background
+                  fetchRecommendations(enteredIngredients, data.nova_class);
                 } catch (err) {
                   console.error(err);
                   alert("Failed to predict. Please check input values.");
@@ -648,6 +713,20 @@ const Dashboard = () => {
                 ))}
               </div>
 
+              <div className="mt-4">
+                <label className="text-xs font-medium text-gray-700 mb-1 block">
+                  {t('ingredientsLabel')}
+                </label>
+                <textarea
+                  name="_ingredients_text"
+                  rows={2}
+                  placeholder={t('ingredientsPlaceholder')}
+                  value={ingredientsText}
+                  onChange={(e) => setIngredientsText(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                />
+              </div>
+
               <div className="flex justify-end mt-6">
                 <Button
                   type="submit"
@@ -677,7 +756,7 @@ const Dashboard = () => {
           {predictionResult && (
             <Card className="relative mt-6 bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
               <button
-                onClick={() => setPredictionResult(null)}
+                onClick={() => { setPredictionResult(null); setRecommendations([]); setRecommendationMessage(''); }}
                 className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
               >
                 <X className="w-5 h-5" />
@@ -725,6 +804,89 @@ const Dashboard = () => {
               </div>
             </Card>
           )}
+
+          {/* ── Recommendations Card ── */}
+          {(loadingRecommendations || recommendations.length > 0 || recommendationMessage) && (
+            <div className="mt-6 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-lg">
+              <h3 className="text-xl font-bold text-emerald-800 mb-1">
+                {t('recommendedAlternatives')}
+              </h3>
+              <p className="text-sm text-gray-500 mb-5">{t('recommendedSubtitle')}</p>
+
+              {loadingRecommendations ? (
+                <div className="flex items-center gap-3 text-emerald-700 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm font-medium">{t('recommendationExplaining')}</span>
+                </div>
+              ) : recommendations.length === 0 ? (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <span className="text-xl mt-0.5">⚠️</span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      {recommendationMessage || t('noAlternativesFound')}
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      This product is already among the healthiest options in its category, or no similar product with a better NOVA score was found in the database.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recommendations.map((rec, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl border border-emerald-100 p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <h4 className="font-semibold text-gray-900 text-sm leading-snug flex-1 line-clamp-2">
+                          {rec.name}
+                        </h4>
+                        <NovaBadge novaGroup={rec.nova} size="sm" />
+                      </div>
+
+                      {/* Nutrition mini-grid */}
+                      <div className="grid grid-cols-3 gap-1.5 mb-3">
+                        {[
+                          { label: 'Cal', value: rec.calories, unit: 'kcal' },
+                          { label: 'Protein', value: rec.protein, unit: 'g' },
+                          { label: 'Fiber', value: rec.fiber, unit: 'g' },
+                          { label: 'Fat', value: rec.fat, unit: 'g' },
+                          { label: 'Sugar', value: rec.sugar, unit: 'g' },
+                          { label: 'Na', value: rec.sodium, unit: 'mg' },
+                        ].map(n => (
+                          <div key={n.label} className="bg-gray-50 rounded-lg p-1.5 text-center">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{n.label}</p>
+                            <p className="text-xs font-bold text-gray-800">
+                              {n.value}<span className="font-normal text-gray-400 ml-0.5">{n.unit}</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* FPro */}
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-xs text-gray-400">{t('fproScore')}</span>
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          {rec.fpro}
+                        </span>
+                      </div>
+
+                      {/* AI Explanation */}
+                      {rec.explanation && (
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3 border-l-2 border-emerald-400">
+                          <p className="text-xs text-emerald-900 leading-relaxed">
+                            {rec.explanation}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -771,9 +933,9 @@ const Dashboard = () => {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayProducts.map(product => (
+          {displayProducts.map((product, idx) => (
             <Card
-              key={product.id}
+              key={product.id || product.FOOD_CODE || product.name || `product-${idx}`}
               onClick={() => handlePopularProductClick(product)}
 
               className="group cursor-pointer overflow-hidden hover:shadow-2xl transition-all duration-300 border-0"

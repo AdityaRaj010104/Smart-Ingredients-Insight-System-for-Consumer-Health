@@ -1,5 +1,6 @@
 import json
 import pickle
+import io
 import joblib
 from extractor import extract_json_from_image
 from fastapi import UploadFile, File, HTTPException
@@ -8,6 +9,7 @@ import pandas as pd
 from pydantic import BaseModel
 import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
 import os
 
 """
@@ -141,7 +143,6 @@ def predict_food_nova(data: FoodInput):
     }
 
 @app.post("/extract_and_predict")
-@app.post("/extract_and_predict")
 async def extract_and_predict(file: UploadFile = File(...)):
     feature_order = [
         'ENERGY_KCAL', 'PROTEIN_G', 'CARBOHYDRATE_G', 'SUGARS_TOTALG',
@@ -151,13 +152,14 @@ async def extract_and_predict(file: UploadFile = File(...)):
     ]
 
     try:
-        # Save uploaded image temporarily
-        temp_path = f"temp_{file.filename}"
-        with open(temp_path, "wb") as f:
-            f.write(await file.read())
+        # Read file bytes entirely into memory – no temp file, no Windows locks
+        contents = await file.read()
+        image_buffer = io.BytesIO(contents)
+        pil_image = Image.open(image_buffer)
+        pil_image.load()          # fully decode image before buffer might close
 
-        # Extract nutrient info from image
-        extracted_data = extract_json_from_image(temp_path)
+        # Pass PIL Image directly to Gemini extractor
+        extracted_data = extract_json_from_image(pil_image)
 
         if "error" in extracted_data:
             raise HTTPException(status_code=500, detail=extracted_data["error"])
@@ -184,12 +186,10 @@ async def extract_and_predict(file: UploadFile = File(...)):
             "extracted_features": extracted_data
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Remove temp file safely
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
 
 # ---------------------------

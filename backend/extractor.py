@@ -21,9 +21,18 @@ genai.configure(api_key=API_KEY)
 # Load the model
 model = genai.GenerativeModel("gemini-2.5-flash")
 
-def extract_json_from_image(image_path):
+def extract_json_from_image(image_input):
+    """
+    Accept either:
+      - a file-system path (str)  – used from CLI / tests
+      - a PIL.Image.Image object  – used from FastAPI (no temp file needed)
+    """
     try:
-        image = Image.open(image_path)
+        if isinstance(image_input, str):
+            image = Image.open(image_input)
+        else:
+            # Already a PIL Image – use directly, no disk I/O
+            image = image_input
 
         # Ask Gemini to return clean JSON only
         prompt = """
