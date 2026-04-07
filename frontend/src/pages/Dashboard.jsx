@@ -170,6 +170,7 @@ const Dashboard = () => {
     setUploading(true);
     setPredictionResult(null);
     setRecommendations([]);
+    setRecommendationMessage('');
 
     const formData = new FormData();
     formData.append("file", file);
@@ -180,25 +181,35 @@ const Dashboard = () => {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
+      // Read JSON first so we can surface the server's error message
       const data = await res.json();
+
+      if (!res.ok) {
+        const serverMsg = data?.detail || data?.error || "Failed to process image.";
+        throw new Error(serverMsg);
+      }
+
       setPredictionResult(data);
 
-      // Auto-trigger recommendations after scan
-      fetchRecommendations(
-        Object.keys(data.extracted_features || {})
-          .map(k => k.toLowerCase().replace(/_/g, ' '))
-          .join(', '),
-        data.nova_class
-      );
+      // Build a meaningful ingredient-like text for the TF-IDF recommender.
+      // We use nutrient names + values (e.g. "energy 250 protein 12 fat 8 sugar 5")
+      // which gives far better cosine-similarity results than bare column keys.
+      const features = data.extracted_features || {};
+      const ingredientText = Object.entries(features)
+        .filter(([, v]) => v && v !== 0)
+        .map(([k, v]) => `${k.toLowerCase().replace(/_g$|_mg$|_mcg$|_kcal$/i, '').replace(/_/g, ' ')} ${v}`)
+        .join(' ');
+
+      fetchRecommendations(ingredientText || file.name, data.nova_class);
+
     } catch (err) {
-      console.error("Error:", err);
-      alert("Failed to process image. Please try again.");
+      console.error("Upload error:", err);
+      alert(`❌ ${err.message}`);
     } finally {
       setUploading(false);
     }
   };
+
 
   // ── Recommendation helper ──────────────────────────────────────────────────
   const fetchRecommendations = async (ingredients, nova) => {
@@ -246,21 +257,20 @@ const Dashboard = () => {
   const getPlaceholderImage = (name) => {
     const categoryImages = {
       "Bourbon Creams": "https://www.bigbasket.com/media/uploads/p/xl/100012354_30-britannia-bourbon-chocolate-cream-biscuits.jpg",
-      "Bournville Dark Chocolate bar": "https://tse4.mm.bing.net/th/id/OIP.jl5HHko54qJfRYT7u36ABAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Cream Crackers": "https://tse4.mm.bing.net/th/id/OIP.GSouOL8kyzwNUbMLC2sjDwHaFq?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Bournville Dark Chocolate bar": "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?auto=format&fit=crop&w=600&q=80",
+      "Cream Crackers": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80",
       "Ferrero Rocher": "https://www.rakhiz.com/catalog/rakhi/CHOAC001.jpg",
-      "Heinz tomato ketchup": "https://tse4.mm.bing.net/th/id/OIP.Gjxlry6hX2bO0A16PbXh1gHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Kurkure": "https://tse3.mm.bing.net/th/id/OIP.c0WiMC0DEy7PUjku8-BZoAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Heinz tomato ketchup": "https://images.unsplash.com/photo-1528751014936-863e6e7a319c?auto=format&fit=crop&w=600&q=80",
+      "Kurkure": "https://unsplash.com/photos/a-white-bowl-filled-with-walnuts-on-top-of-a-table-IgpWZlCJ-Ms",
       "Lays": "https://m.media-amazon.com/images/I/71kOsITKSkL.jpg",
-      "Oreo": "https://th.bing.com/th/id/R.4870bcda87407c7b3eea0bf599809f86?rik=rSFG%2bJJgP4MVpw&riu=http%3a%2f%2fimages5.fanpop.com%2fimage%2fphotos%2f31900000%2fOreo-oreo-31905998-2000-1317.jpg&ehk=UJuj4Krp91jPCFOVSHOAAsQCg0NnGNJWU1eFpJIzL50%3d&risl=&pid=ImgRaw&r=0",
-      "Sunflower Oil": "https://tse1.mm.bing.net/th/id/OIP.ex03LxcKKqW0juoLsiUyrAHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      "Walnuts": "https://th.bing.com/th/id/R.ff3456d6fe93659b2762447ba0ca6dc9?rik=ogOmV03YhpG0Bg&riu=http%3a%2f%2fs3-us-west-2.amazonaws.com%2fdrann%2fwp-content%2fuploads%2f2017%2f09%2f26200539%2fwalnuts-on-wooden-table.jpeg&ehk=s%2fRRTT%2bQOVe6DuGrh1NFXd%2faFTk%2bPkwd4oXAUZR9Qig%3d&risl=1&pid=ImgRaw&r=0",
-      "Aashirvaad Whole Wheat Atta": "https://tse3.mm.bing.net/th/id/OIP.Ym1fEI1UN53t_mMmWEdm3QHaHa?cb=ucfimg2ucfimg=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      "Oreo": "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&w=600&q=80",
+      "Sunflower Oil": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+      "Walnuts": "https://images.unsplash.com/photo-1523472721958-9e81d75c9428?auto=format&fit=crop&w=600&q=80",
+      "Aashirvaad Whole Wheat Atta": "https://placehold.co/600x400/f5deb3/333333?text=Whole+Wheat+Atta",
       "India Gate Brown Rice": "https://kiasumart.com/wp-content/uploads/2020/08/INDIA-GATE-BROWN-BASMATHI-RICE-5KG-F.jpg",
       "Tata Sampann Toor Dal": "https://5.imimg.com/data5/ECOM/Default/2023/6/313587974/UK/LB/FI/73577670/tata-sanpann-toor-arhar-dal-30kg-1675247435622-sku-0153-0-1000x1000.jpg",
-      "24 Mantra Organic Brown Rice": "https://th.bing.com/th/id/R.0920ca76c9ffe2470560b1aeb64f34df?rik=ju1HI5U3HrcopQ&riu=http%3a%2f%2fwww.chennaigrocers.com%2fcdn%2fshop%2ffiles%2f24MantraOrganicSonamasuriBrownRice1kg_1.png%3fcrop%3dcenter%26height%3d1200%26v%3d1734690872%26width%3d1200&ehk=ZqtQVclGW1CgdPwtkjMdhPSrR8Rk9qkCmzoR3i34kMk%3d&risl=&pid=ImgRaw&r=0",
+      "24 Mantra Organic Brown Rice": "https://placehold.co/600x400/d4a373/ffffff?text=Organic+Brown+Rice",
       "Fortune Soya Chunks": "https://www.fortunefoods.com/wp-content/uploads/2022/12/Soya-Chunks-44g.png",
-
     };
 
     // return a category-specific image or a general fallback
@@ -840,10 +850,10 @@ const Dashboard = () => {
                         {[
                           { label: 'Cal', value: rec.calories, unit: 'kcal' },
                           { label: 'Protein', value: rec.protein, unit: 'g' },
-                          { label: 'Fiber',  value: rec.fiber,   unit: 'g' },
-                          { label: 'Fat',    value: rec.fat,     unit: 'g' },
-                          { label: 'Sugar',  value: rec.sugar,   unit: 'g' },
-                          { label: 'Na',     value: rec.sodium,  unit: 'mg' },
+                          { label: 'Fiber', value: rec.fiber, unit: 'g' },
+                          { label: 'Fat', value: rec.fat, unit: 'g' },
+                          { label: 'Sugar', value: rec.sugar, unit: 'g' },
+                          { label: 'Na', value: rec.sodium, unit: 'mg' },
                         ].map(n => (
                           <div key={n.label} className="bg-gray-50 rounded-lg p-1.5 text-center">
                             <p className="text-[10px] text-gray-400 uppercase tracking-wide">{n.label}</p>
@@ -923,9 +933,9 @@ const Dashboard = () => {
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayProducts.map(product => (
+          {displayProducts.map((product, idx) => (
             <Card
-              key={product.id}
+              key={product.id || product.FOOD_CODE || product.name || `product-${idx}`}
               onClick={() => handlePopularProductClick(product)}
 
               className="group cursor-pointer overflow-hidden hover:shadow-2xl transition-all duration-300 border-0"
