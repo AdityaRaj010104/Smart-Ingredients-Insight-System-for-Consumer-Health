@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useTranslation } from "react-i18next";
-import { translateWithCache } from "../lib/translateWithCache";
 import i18n from "i18next";
-import { translateBatch } from '../lib/translateBatch';
 
 const CategoriesPage = () => {
   const navigate = useNavigate();

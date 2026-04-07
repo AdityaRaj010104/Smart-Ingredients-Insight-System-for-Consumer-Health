@@ -12,6 +12,7 @@ import CategoryPage from './pages/CategoryPage';
 import CategoriesPage from './pages/CategoriesPage';
 import Account from './pages/Account';
 import PopularProductDetail from './PopularProductDetail';
+import SearchResultsPage from './pages/SearchResultsPage';
 
 import "./i18n";
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/category/:categoryName" element={<CategoryPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/account" element={<Account />} />
             <Route path="/popular/:name" element={<PopularProductDetail />} />
           </Routes>
