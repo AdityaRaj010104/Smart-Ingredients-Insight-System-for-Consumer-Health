@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useTranslation } from "react-i18next";
-import { translateWithCache } from "../lib/translateWithCache";
 import i18n from "i18next";
-import { translateBatch } from '../lib/translateBatch';
 
 const CategoriesPage = () => {
   const navigate = useNavigate();
@@ -30,13 +28,13 @@ const CategoriesPage = () => {
 
         // 🔥 Parallel API calls (FAST)
         const promises = data.map(category =>
-  fetch(`http://127.0.0.1:5000/api/products/category/${encodeURIComponent(category.name_en)}`)
-    .then(async res => {
-      const text = await res.text();
-      console.log(category.name_en, text); // 👈 check which one fails
-      return JSON.parse(text);
-    })
-);
+          fetch(`http://127.0.0.1:5000/api/products/category/${encodeURIComponent(category.name_en)}`)
+            .then(async res => {
+              const text = await res.text();
+              console.log(category.name_en, text); // 👈 check which one fails
+              return JSON.parse(text);
+            })
+        );
 
         const results = await Promise.all(promises);
 
@@ -58,41 +56,41 @@ const CategoriesPage = () => {
   }, [i18n.language]);
 
   const filteredCategories = categories.filter(
-  cat =>
-    cat.name_en !== "Not included in a food category" &&
-    cat.name_en !== "Formula" &&
-    cat.name_en !== "Human milk"
-);
+    cat =>
+      cat.name_en !== "Not included in a food category" &&
+      cat.name_en !== "Formula" &&
+      cat.name_en !== "Human milk"
+  );
 
   // ✅ Create observer once
-//  useEffect(() => {
-//   const translateAll = async () => {
-//     const lang = i18n.language.split("-")[0];
+  //  useEffect(() => {
+  //   const translateAll = async () => {
+  //     const lang = i18n.language.split("-")[0];
 
-//     console.log("Lang:", lang);
+  //     console.log("Lang:", lang);
 
-//     // If English → reset
-//     if (lang === "en") {
-//       setTranslatedCategories({});
-//       return;
-//     }
+  //     // If English → reset
+  //     if (lang === "en") {
+  //       setTranslatedCategories({});
+  //       return;
+  //     }
 
-//     if (!filteredCategories.length) return;
+  //     if (!filteredCategories.length) return;
 
-//     try {
-//       const result = await translateBatch(filteredCategories, lang);
+  //     try {
+  //       const result = await translateBatch(filteredCategories, lang);
 
-//       console.log("Batch result:", result);
+  //       console.log("Batch result:", result);
 
-//       setTranslatedCategories(result);
+  //       setTranslatedCategories(result);
 
-//     } catch (err) {
-//       console.error("Batch translation error:", err);
-//     }
-//   };
+  //     } catch (err) {
+  //       console.error("Batch translation error:", err);
+  //     }
+  //   };
 
-//   translateAll();
-// }, [filteredCategories, i18n.language]);
+  //   translateAll();
+  // }, [filteredCategories, i18n.language]);
 
   if (loading) {
     return (

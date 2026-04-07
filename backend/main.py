@@ -10,7 +10,7 @@ import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-""""
+"""
 MODEL_PATH = "model/final_model_rf.pkl"   # change if needed
 
 # Load model (joblib → pickle fallback)

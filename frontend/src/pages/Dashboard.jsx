@@ -15,7 +15,6 @@ import { X } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
-import { translateWithCache } from "../lib/translateWithCache";
 
 
 const Dashboard = () => {
@@ -73,9 +72,9 @@ const Dashboard = () => {
       try {
         const lang = i18n.language.split("-")[0];
 
-const res = await fetch(
-  `http://127.0.0.1:5000/api/products/categories?lang=${lang}`
-);
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/products/categories?lang=${lang}`
+        );
         const data = await res.json();
         setCategories(data);
       } catch (err) {
@@ -91,9 +90,9 @@ const res = await fetch(
         try {
           const lang = i18n.language.split("-")[0];
 
-const res = await fetch(
-  `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}&lang=${lang}`
-);
+          const res = await fetch(
+            `http://127.0.0.1:5000/api/products/search?q=${encodeURIComponent(searchQuery)}&lang=${lang}`
+          );
           const data = await res.json();
           setSearchResults(data.slice(0, 15)); // top 5 suggestions
           setShowSuggestions(true);
@@ -139,8 +138,8 @@ const res = await fetch(
   // handleProductClick now uses name for popular products (extra_products)
   const handlePopularProductClick = (product) => {
     // If the product came from extra_products (popular ones), open new page
-    
-  const routeName = product.name_en || product.name; // ✅ use English
+
+    const routeName = product.name_en || product.name; // ✅ use English
 
 
     if (routeName) {
@@ -249,136 +248,136 @@ const res = await fetch(
 
   const filteredCategories = categories
     .filter(cat =>
-  cat.name_en !== "Not included in a food category" &&
-  cat.name_en !== "Formula" &&
-  cat.name_en !== "Human milk"
-)
+      cat.name_en !== "Not included in a food category" &&
+      cat.name_en !== "Formula" &&
+      cat.name_en !== "Human milk"
+    )
     .slice(0, 20); // limit to 20
 
-//   useEffect(() => {
-//   const translateCategories = async () => {
-//     const lang = i18n.language.split("-")[0];
+  //   useEffect(() => {
+  //   const translateCategories = async () => {
+  //     const lang = i18n.language.split("-")[0];
 
-//     console.log("Lang:", lang);
+  //     console.log("Lang:", lang);
 
-//     // ✅ reset for english
-//     if (lang === "en") {
-//       setTranslatedCategories({});
-//       return;
-//     }
+  //     // ✅ reset for english
+  //     if (lang === "en") {
+  //       setTranslatedCategories({});
+  //       return;
+  //     }
 
-//     if (!filteredCategories.length) return;
+  //     if (!filteredCategories.length) return;
 
-//     let updated = {};
+  //     let updated = {};
 
-//     const LIMIT = 20; // 👈 only translate first 8
+  //     const LIMIT = 20; // 👈 only translate first 8
 
-// for (let i = 0; i < Math.min(filteredCategories.length, LIMIT); i++) {
-//   const cat = filteredCategories[i];
+  // for (let i = 0; i < Math.min(filteredCategories.length, LIMIT); i++) {
+  //   const cat = filteredCategories[i];
 
-//   if (translatedCategories[cat]) {
-//     updated[cat] = translatedCategories[cat];
-//     continue;
-//   }
+  //   if (translatedCategories[cat]) {
+  //     updated[cat] = translatedCategories[cat];
+  //     continue;
+  //   }
 
-//   const translated = await translateWithCache(cat, lang);
-//   updated[cat] = translated || cat;
-// }
+  //   const translated = await translateWithCache(cat, lang);
+  //   updated[cat] = translated || cat;
+  // }
 
-//     setTranslatedCategories(prev => ({ ...prev, ...updated }));
-//   };
+  //     setTranslatedCategories(prev => ({ ...prev, ...updated }));
+  //   };
 
-//   translateCategories();
-// }, [filteredCategories, i18n.language]);
+  //   translateCategories();
+  // }, [filteredCategories, i18n.language]);
 
-// useEffect(() => {
-//   const translateProducts = async () => {
-//     const lang = i18n.language.split("-")[0];
+  // useEffect(() => {
+  //   const translateProducts = async () => {
+  //     const lang = i18n.language.split("-")[0];
 
-//     // reset for English
-//     if (lang === "en") {
-//       setTranslatedProducts({});
-//       return;
-//     }
+  //     // reset for English
+  //     if (lang === "en") {
+  //       setTranslatedProducts({});
+  //       return;
+  //     }
 
-//     if (!popularProducts.length) return;
+  //     if (!popularProducts.length) return;
 
-//     let updated = {};
+  //     let updated = {};
 
-//     const LIMIT = 16; // 👈 limit for performance
+  //     const LIMIT = 16; // 👈 limit for performance
 
-//     for (let i = 0; i < Math.min(popularProducts.length, LIMIT); i++) {
-//       const product = popularProducts[i];
+  //     for (let i = 0; i < Math.min(popularProducts.length, LIMIT); i++) {
+  //       const product = popularProducts[i];
 
-//       if (translatedProducts[product.name]) {
-//         updated[product.name] = translatedProducts[product.name];
-//         continue;
-//       }
+  //       if (translatedProducts[product.name]) {
+  //         updated[product.name] = translatedProducts[product.name];
+  //         continue;
+  //       }
 
-//       const translated = await translateWithCache(product.name, lang);
-//       updated[product.name] = translated || product.name;
-//     }
+  //       const translated = await translateWithCache(product.name, lang);
+  //       updated[product.name] = translated || product.name;
+  //     }
 
-//     setTranslatedProducts(prev => ({ ...prev, ...updated }));
-//   };
+  //     setTranslatedProducts(prev => ({ ...prev, ...updated }));
+  //   };
 
-//   translateProducts();
-// // }, [popularProducts, i18n.language]);
+  //   translateProducts();
+  // // }, [popularProducts, i18n.language]);
 
-// const translateAllContent = async () => {
-//   const lang = i18n.language.split("-")[0];
+  // const translateAllContent = async () => {
+  //   const lang = i18n.language.split("-")[0];
 
-//   if (lang === "en") {
-//     setTranslatedCategories({});
-//     setTranslatedProducts({});
-//     return;
-//   }
+  //   if (lang === "en") {
+  //     setTranslatedCategories({});
+  //     setTranslatedProducts({});
+  //     return;
+  //   }
 
-//   // ✅ check cache first
-//   const cached = localStorage.getItem(`translations_${lang}`);
-//   if (cached) {
-//     const parsed = JSON.parse(cached);
-//     setTranslatedCategories(parsed);
-//     setTranslatedProducts(parsed);
-//     return;
-//   }
+  //   // ✅ check cache first
+  //   const cached = localStorage.getItem(`translations_${lang}`);
+  //   if (cached) {
+  //     const parsed = JSON.parse(cached);
+  //     setTranslatedCategories(parsed);
+  //     setTranslatedProducts(parsed);
+  //     return;
+  //   }
 
-//   try {
-//     // 🔥 collect all text
-//     const categoryTexts = filteredCategories.slice(0, 20);
-//     const productTexts = popularProducts.slice(0, 20).map(p => p.name);
+  //   try {
+  //     // 🔥 collect all text
+  //     const categoryTexts = filteredCategories.slice(0, 20);
+  //     const productTexts = popularProducts.slice(0, 20).map(p => p.name);
 
-//     const allTexts = [...new Set([...categoryTexts, ...productTexts])];
+  //     const allTexts = [...new Set([...categoryTexts, ...productTexts])];
 
-//     const res = await fetch("http://127.0.0.1:5000/translate-batch", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json"
-//       },
-//       body: JSON.stringify({
-//         texts: allTexts,
-//         target: lang
-//       })
-//     });
+  //     const res = await fetch("http://127.0.0.1:5000/translate-batch", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify({
+  //         texts: allTexts,
+  //         target: lang
+  //       })
+  //     });
 
-//     const data = await res.json();
+  //     const data = await res.json();
 
-//     // ✅ store in cache
-//     localStorage.setItem(`translations_${lang}`, JSON.stringify(data));
+  //     // ✅ store in cache
+  //     localStorage.setItem(`translations_${lang}`, JSON.stringify(data));
 
-//     setTranslatedCategories(data);
-//     setTranslatedProducts(data);
+  //     setTranslatedCategories(data);
+  //     setTranslatedProducts(data);
 
-//   } catch (err) {
-//     console.error("Batch translation failed:", err);
-//   }
-// };
+  //   } catch (err) {
+  //     console.error("Batch translation failed:", err);
+  //   }
+  // };
 
-// useEffect(() => {
-//   if (!filteredCategories.length || !popularProducts.length) return;
+  // useEffect(() => {
+  //   if (!filteredCategories.length || !popularProducts.length) return;
 
-//   translateAllContent();
-// }, [filteredCategories, popularProducts, i18n.language]);
+  //   translateAllContent();
+  // }, [filteredCategories, popularProducts, i18n.language]);
   return (
     <div className="min-h-screen bg-linear-to-b from-emerald-50 via-white to-blue-50">
       {/* Navbar */}
@@ -438,21 +437,21 @@ const res = await fetch(
                   >
                     {t("logout")}
                   </Button>
-                <Button
-  onClick={() => {
-    const currentLang = i18n.language.split("-")[0];
-    console.log("Current lang:", currentLang);
+                  <Button
+                    onClick={() => {
+                      const currentLang = i18n.language.split("-")[0];
+                      console.log("Current lang:", currentLang);
 
-    const newLang = currentLang === "en" ? "hi" : "en";
-    console.log("Switching to:", newLang);
+                      const newLang = currentLang === "en" ? "hi" : "en";
+                      console.log("Switching to:", newLang);
 
-    i18n.changeLanguage(newLang);
-    localStorage.setItem("lang", newLang);
-  }}
-  className="px-3 py-1 bg-gray-200 rounded-lg text-sm"
->
-  🌐
-</Button>
+                      i18n.changeLanguage(newLang);
+                      localStorage.setItem("lang", newLang);
+                    }}
+                    className="px-3 py-1 bg-gray-200 rounded-lg text-sm"
+                  >
+                    🌐
+                  </Button>
                 </>
               ) : (
                 <button
@@ -775,10 +774,10 @@ const res = await fetch(
             >
               <div className="relative overflow-hidden">
                 <img
-                  
 
-                    src={ getPlaceholderImage(product.name_en || product.name) }
-                  
+
+                  src={getPlaceholderImage(product.name_en || product.name)}
+
                   alt={product.name}
                   className="w-full h-60 object-cover group-hover:scale-110 transition-transform duration-300"
                 />

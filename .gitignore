@@ -9,7 +9,8 @@ virtualenv/
 */activate
 pyvenv.cfg
 pip-selfcheck.json
-
+node_modules/
+./frontend/node_modules/
 # --- Python Cache and Bytecode Files ---
 # These are generated automatically by the Python interpreter.
 __pycache__/
