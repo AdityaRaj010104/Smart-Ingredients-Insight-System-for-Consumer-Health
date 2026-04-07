@@ -115,10 +115,19 @@ high: "High",
 
 balancedMacros: "balanced macros",
 
-      // Disclaimer
       disclaimer:
         "Nutrition data shown here are estimates. Always verify with product packaging.",
-        nutritionFactsDisclaimer: "These nutrition facts are approximate and based on standard database values per 100 grams. Always check packaging for updated nutrition and allergen information."
+        nutritionFactsDisclaimer: "These nutrition facts are approximate and based on standard database values per 100 grams. Always check packaging for updated nutrition and allergen information.",
+
+      // Recommendation section
+      recommendedAlternatives: "✨ Recommended Healthier Alternatives",
+      recommendedSubtitle: "Based on ingredient similarity, here are healthier options:",
+      recommendationExplaining: "Analyzing alternatives...",
+      noAlternativesFound: "No better alternative product found.",
+      ingredientsLabel: "Ingredients (optional)",
+      ingredientsPlaceholder: "e.g. wheat flour, sugar, palm oil, salt",
+      novaScore: "NOVA Score",
+      fproScore: "FPro Score",
     },
     
   },
@@ -235,10 +244,19 @@ medium: "मध्यम",
 high: "अधिक",
 
 
-      // Disclaimer
       disclaimer:
         "यह पोषण जानकारी अनुमानित है। सटीक जानकारी के लिए पैकेजिंग देखें।",
-        nutritionFactsDisclaimer: "ये पोषण संबंधी जानकारी अनुमानित है और प्रति 100 ग्राम के मानक डेटा पर आधारित है। सटीक पोषण और एलर्जी से संबंधित जानकारी के लिए हमेशा उत्पाद की पैकेजिंग जांचें।"
+        nutritionFactsDisclaimer: "ये पोषण संबंधी जानकारी अनुमानित है और प्रति 100 ग्राम के मानक डेटा पर आधारित है। सटीक पोषण और एलर्जी से संबंधित जानकारी के लिए हमेशा उत्पाद की पैकेजिंग जांचें।",
+
+      // Recommendation section
+      recommendedAlternatives: "✨ अनुशंसित स्वस्थ विकल्प",
+      recommendedSubtitle: "सामग्री समानता के आधार पर, यहां निरोगी विकल्प हैं:",
+      recommendationExplaining: "विकल्पों का विश्लेषण हो रहा है...",
+      noAlternativesFound: "कोई बेहतर वैकल्पिक उत्पाद नहीं मिला।",
+      ingredientsLabel: "सामग्री (वैकल्पिक)",
+      ingredientsPlaceholder: "जैसे: गेहूं का आटा, चीनी, पाम ऑयल, नमक",
+      novaScore: "NOVA स्कोर",
+      fproScore: "FPro स्कोर",
     },
     
   }

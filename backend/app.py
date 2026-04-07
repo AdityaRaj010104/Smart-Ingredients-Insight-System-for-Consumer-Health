@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from auth.routes import auth_bp
 from flask_cors import CORS
 from products.routes import products_bp  # ✅ import
+from recommendation_routes import recommendation_bp  # ✅ recommendation
 from deep_translator import GoogleTranslator
 
 
@@ -14,6 +15,7 @@ app.secret_key = 'your_super_secret_key'  # Change this to something secure
 # Register the auth blueprint
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(products_bp, url_prefix='/api')  # ✅ register
+app.register_blueprint(recommendation_bp, url_prefix='/api')  # ✅ recommendation
 
 @app.route('/translate', methods=['POST'])
 def translate_text():

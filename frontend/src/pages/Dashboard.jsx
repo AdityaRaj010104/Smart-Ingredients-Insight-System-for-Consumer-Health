@@ -34,6 +34,11 @@ const Dashboard = () => {
   const [predictionResult, setPredictionResult] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [manualMode, setManualMode] = useState(false);
+  // Recommendation state
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationMessage, setRecommendationMessage] = useState('');
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [ingredientsText, setIngredientsText] = useState('');
   const { t } = useTranslation();
 
 
@@ -164,6 +169,7 @@ const Dashboard = () => {
     setSelectedFile(file);
     setUploading(true);
     setPredictionResult(null);
+    setRecommendations([]);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -178,11 +184,48 @@ const Dashboard = () => {
 
       const data = await res.json();
       setPredictionResult(data);
+
+      // Auto-trigger recommendations after scan
+      fetchRecommendations(
+        Object.keys(data.extracted_features || {})
+          .map(k => k.toLowerCase().replace(/_/g, ' '))
+          .join(', '),
+        data.nova_class
+      );
     } catch (err) {
       console.error("Error:", err);
       alert("Failed to process image. Please try again.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  // ── Recommendation helper ──────────────────────────────────────────────────
+  const fetchRecommendations = async (ingredients, nova) => {
+    if (!ingredients) return;
+    setLoadingRecommendations(true);
+    setRecommendations([]);
+    setRecommendationMessage('');
+    try {
+      const lang = i18n.language.split('-')[0];
+      const res = await fetch('http://127.0.0.1:5000/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_ingredients: ingredients,
+          user_nova: nova,
+          lang,
+        }),
+      });
+      const data = await res.json();
+      setRecommendations(data.recommendations || []);
+      // Store the server message (e.g. "No better alternative product found.")
+      if (data.message) setRecommendationMessage(data.message);
+    } catch (err) {
+      console.error('Recommendation error:', err);
+      setRecommendationMessage('');
+    } finally {
+      setLoadingRecommendations(false);
     }
   };
 
@@ -582,21 +625,33 @@ const Dashboard = () => {
               onSubmit={async (e) => {
                 e.preventDefault();
                 setUploading(true);
+                setRecommendations([]);
                 const formData = Object.fromEntries(new FormData(e.target).entries());
+                // Extract ingredients before removing from numeric payload
+                const enteredIngredients = ingredientsText.trim() ||
+                  Object.keys(formData)
+                    .filter(k => !k.startsWith('_'))
+                    .map(k => k.toLowerCase().replace(/_/g, ' '))
+                    .join(', ');
+
+                const numericPayload = Object.fromEntries(
+                  Object.entries(formData)
+                    .filter(([k]) => !k.startsWith('_'))
+                    .map(([k, v]) => [k, parseFloat(v) || 0])
+                );
 
                 try {
                   const res = await fetch("http://127.0.0.1:8000/predict", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(
-                      Object.fromEntries(
-                        Object.entries(formData).map(([k, v]) => [k, parseFloat(v) || 0])
-                      )
-                    ),
+                    body: JSON.stringify(numericPayload),
                   });
                   if (!res.ok) throw new Error("Prediction failed");
                   const data = await res.json();
                   setPredictionResult(data);
+
+                  // Trigger recommendation in background
+                  fetchRecommendations(enteredIngredients, data.nova_class);
                 } catch (err) {
                   console.error(err);
                   alert("Failed to predict. Please check input values.");
@@ -648,6 +703,20 @@ const Dashboard = () => {
                 ))}
               </div>
 
+              <div className="mt-4">
+                <label className="text-xs font-medium text-gray-700 mb-1 block">
+                  {t('ingredientsLabel')}
+                </label>
+                <textarea
+                  name="_ingredients_text"
+                  rows={2}
+                  placeholder={t('ingredientsPlaceholder')}
+                  value={ingredientsText}
+                  onChange={(e) => setIngredientsText(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-emerald-500 focus:border-emerald-500 resize-none"
+                />
+              </div>
+
               <div className="flex justify-end mt-6">
                 <Button
                   type="submit"
@@ -677,7 +746,7 @@ const Dashboard = () => {
           {predictionResult && (
             <Card className="relative mt-6 bg-white p-6 rounded-2xl shadow-2xl border border-gray-200">
               <button
-                onClick={() => setPredictionResult(null)}
+                onClick={() => { setPredictionResult(null); setRecommendations([]); setRecommendationMessage(''); }}
                 className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
               >
                 <X className="w-5 h-5" />
@@ -725,6 +794,89 @@ const Dashboard = () => {
               </div>
             </Card>
           )}
+
+          {/* ── Recommendations Card ── */}
+          {(loadingRecommendations || recommendations.length > 0 || recommendationMessage) && (
+            <div className="mt-6 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 shadow-lg">
+              <h3 className="text-xl font-bold text-emerald-800 mb-1">
+                {t('recommendedAlternatives')}
+              </h3>
+              <p className="text-sm text-gray-500 mb-5">{t('recommendedSubtitle')}</p>
+
+              {loadingRecommendations ? (
+                <div className="flex items-center gap-3 text-emerald-700 py-4">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm font-medium">{t('recommendationExplaining')}</span>
+                </div>
+              ) : recommendations.length === 0 ? (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <span className="text-xl mt-0.5">⚠️</span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">
+                      {recommendationMessage || t('noAlternativesFound')}
+                    </p>
+                    <p className="text-xs text-amber-600 mt-1">
+                      This product is already among the healthiest options in its category, or no similar product with a better NOVA score was found in the database.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recommendations.map((rec, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl border border-emerald-100 p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                    >
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <h4 className="font-semibold text-gray-900 text-sm leading-snug flex-1 line-clamp-2">
+                          {rec.name}
+                        </h4>
+                        <NovaBadge novaGroup={rec.nova} size="sm" />
+                      </div>
+
+                      {/* Nutrition mini-grid */}
+                      <div className="grid grid-cols-3 gap-1.5 mb-3">
+                        {[
+                          { label: 'Cal', value: rec.calories, unit: 'kcal' },
+                          { label: 'Protein', value: rec.protein, unit: 'g' },
+                          { label: 'Fiber',  value: rec.fiber,   unit: 'g' },
+                          { label: 'Fat',    value: rec.fat,     unit: 'g' },
+                          { label: 'Sugar',  value: rec.sugar,   unit: 'g' },
+                          { label: 'Na',     value: rec.sodium,  unit: 'mg' },
+                        ].map(n => (
+                          <div key={n.label} className="bg-gray-50 rounded-lg p-1.5 text-center">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">{n.label}</p>
+                            <p className="text-xs font-bold text-gray-800">
+                              {n.value}<span className="font-normal text-gray-400 ml-0.5">{n.unit}</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* FPro */}
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-xs text-gray-400">{t('fproScore')}</span>
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          {rec.fpro}
+                        </span>
+                      </div>
+
+                      {/* AI Explanation */}
+                      {rec.explanation && (
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3 border-l-2 border-emerald-400">
+                          <p className="text-xs text-emerald-900 leading-relaxed">
+                            {rec.explanation}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
